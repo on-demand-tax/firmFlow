@@ -22,7 +22,7 @@ describe('UserModel', () => {
   });
 
   it('excludes salaryTable by default query', async () => {
-    const user = await UserModel.create({
+    await UserModel.create({
       email: 'admin@yourfirm.com',
       name: 'Admin',
       salaryTable: [

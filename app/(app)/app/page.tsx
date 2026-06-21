@@ -106,7 +106,10 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    void loadDashboard();
+    async function init() {
+      await loadDashboard();
+    }
+    void init();
   }, [loadDashboard]);
 
   function formatCurrency(amount: number) {

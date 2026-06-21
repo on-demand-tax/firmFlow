@@ -49,7 +49,10 @@ export default function AdminLocksPage() {
   }, []);
 
   useEffect(() => {
-    void loadLocks();
+    async function init() {
+      await loadLocks();
+    }
+    void init();
   }, [loadLocks]);
 
   async function handleCreate(e: React.FormEvent) {

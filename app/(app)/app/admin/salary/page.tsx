@@ -63,12 +63,18 @@ export default function AdminSalaryPage() {
   }, []);
 
   useEffect(() => {
-    void loadUsers();
+    async function init() {
+      await loadUsers();
+    }
+    void init();
   }, [loadUsers]);
 
   useEffect(() => {
     if (selectedUserId) {
-      void loadSalary(selectedUserId);
+      async function init() {
+        await loadSalary(selectedUserId);
+      }
+      void init();
     }
   }, [selectedUserId, loadSalary]);
 

@@ -1,4 +1,4 @@
-import { canApprove, canManageClients, isReadOnlyOnLeave } from '@/lib/permissions';
+import { canApprove, isReadOnlyOnLeave } from '@/lib/permissions';
 
 describe('permissions', () => {
   it('Admin can approve', () => expect(canApprove('Admin')).toBe(true));

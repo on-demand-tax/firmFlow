@@ -65,7 +65,10 @@ export default function ProjectsPage() {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    async function init() {
+      await loadData();
+    }
+    void init();
   }, [loadData]);
 
   async function handleSubmit(e: React.FormEvent) {

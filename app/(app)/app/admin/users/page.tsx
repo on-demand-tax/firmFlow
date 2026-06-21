@@ -21,18 +21,6 @@ interface User {
   status: 'Active' | 'OnLeave' | 'Terminated';
 }
 
-const roleLabel: Record<User['role'], string> = {
-  Admin: '관리자',
-  Approver: '승인자',
-  Preparer: '작성자',
-};
-
-const statusLabel: Record<User['status'], string> = {
-  Active: '활성',
-  OnLeave: '휴직',
-  Terminated: '퇴사',
-};
-
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +39,10 @@ export default function AdminUsersPage() {
   }, []);
 
   useEffect(() => {
-    void loadUsers();
+    async function init() {
+      await loadUsers();
+    }
+    void init();
   }, [loadUsers]);
 
   async function handleUpdate(userId: string, role: User['role'], status: User['status']) {
@@ -105,7 +96,7 @@ export default function AdminUsersPage() {
               <TableBody>
                 {users.map((user) => (
                   <UserRow
-                    key={user._id}
+                    key={`${user._id}:${user.role}:${user.status}`}
                     user={user}
                     saving={savingId === user._id}
                     onSave={handleUpdate}
@@ -131,11 +122,6 @@ function UserRow({
 }) {
   const [role, setRole] = useState(user.role);
   const [status, setStatus] = useState(user.status);
-
-  useEffect(() => {
-    setRole(user.role);
-    setStatus(user.status);
-  }, [user.role, user.status]);
 
   const changed = role !== user.role || status !== user.status;
 

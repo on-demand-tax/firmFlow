@@ -60,7 +60,10 @@ export default function TimesheetPage() {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    async function init() {
+      await loadData();
+    }
+    void init();
   }, [loadData]);
 
   async function handleSubmit(values: {

@@ -58,7 +58,10 @@ export default function ApprovalsPage() {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    async function init() {
+      await loadData();
+    }
+    void init();
   }, [loadData]);
 
   async function handleStatus(id: string, status: 'Approved' | 'Rejected') {

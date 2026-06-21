@@ -47,7 +47,10 @@ export default function ClientsPage() {
   }, []);
 
   useEffect(() => {
-    void loadClients();
+    async function init() {
+      await loadClients();
+    }
+    void init();
   }, [loadClients]);
 
   async function handleSubmit(e: React.FormEvent) {
