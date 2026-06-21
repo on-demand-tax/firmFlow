@@ -1,12 +1,14 @@
 {
-  "name": "firmflow-scaffold",
+  "name": "firmflow",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
