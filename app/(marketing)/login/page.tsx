@@ -1,3 +1,6 @@
+'use client';
+
+import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
@@ -9,11 +12,13 @@ export default function LoginPage() {
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
           회사 Google Workspace 계정으로 로그인합니다.
-          <br />
-          (인증 연동은 준비 중입니다)
         </p>
-        <Button className="mt-8 w-full" size="lg" disabled>
-          내부 시스템 로그인
+        <Button
+          className="mt-8 w-full"
+          size="lg"
+          onClick={() => signIn('google', { callbackUrl: '/app' })}
+        >
+          Google로 로그인
         </Button>
       </div>
     </section>
