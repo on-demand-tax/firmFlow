@@ -8,7 +8,7 @@ import {
   hasDuplicateEffectiveDate,
   serializeSalaryEntry,
 } from '@/lib/user-helpers';
-import { UserModel } from '@/models/User';
+import { UserModel, type ISalaryHistory } from '@/models/User';
 
 export async function GET(
   _request: Request,
@@ -88,7 +88,8 @@ export async function PATCH(
     hourlyBillableRate,
   });
   user.salaryTable.sort(
-    (a, b) => a.effectiveDate.getTime() - b.effectiveDate.getTime(),
+    (a: ISalaryHistory, b: ISalaryHistory) =>
+      a.effectiveDate.getTime() - b.effectiveDate.getTime(),
   );
   await user.save();
 

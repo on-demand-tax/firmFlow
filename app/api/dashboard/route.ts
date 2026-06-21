@@ -89,7 +89,7 @@ export async function GET(request: Request) {
   const salaryByUser = new Map<string, ISalaryHistory[]>(
     users.map((u) => [
       String(u._id),
-      (u.salaryTable ?? []).map((entry) => ({
+      (u.salaryTable ?? []).map((entry: ISalaryHistory) => ({
         effectiveDate: entry.effectiveDate,
         baseSalary: entry.baseSalary,
         hourlyBillableRate: entry.hourlyBillableRate,
