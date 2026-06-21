@@ -1,4 +1,5 @@
 import { PeriodLockModel } from '@/models/PeriodLock';
+import { ExpenseModel } from '@/models/Expense';
 import { TimeLogModel } from '@/models/TimeLog';
 import { datesOverlapInclusive } from '@/lib/dates';
 
@@ -27,15 +28,21 @@ async function unlockTimeLogsInRange(startDate: Date, endDate: Date) {
   );
 }
 
-/** Expense locking deferred to Task 17 — no-op stub */
-export async function lockExpensesInRange(_startDate: Date, _endDate: Date, _lockedAt: Date) {
-  // no-op
+async function lockExpensesInRange(startDate: Date, endDate: Date, lockedAt: Date) {
+  await ExpenseModel.updateMany(
+    { date: { $gte: startDate, $lte: endDate } },
+    { $set: { lockedAt } },
+  );
 }
 
-/** Expense unlocking deferred to Task 17 — no-op stub */
-export async function unlockExpensesInRange(_startDate: Date, _endDate: Date) {
-  // no-op
+async function unlockExpensesInRange(startDate: Date, endDate: Date) {
+  await ExpenseModel.updateMany(
+    { date: { $gte: startDate, $lte: endDate } },
+    { $unset: { lockedAt: '' } },
+  );
 }
+
+export { lockExpensesInRange, unlockExpensesInRange };
 
 export async function applyPeriodLock(
   startDate: Date,

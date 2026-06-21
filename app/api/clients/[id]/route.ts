@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
 import { ClientModel } from '@/models/Client';
+import { ExpenseModel } from '@/models/Expense';
 
 function serializeClient(client: {
   _id: unknown;
@@ -74,10 +75,16 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
   await dbConnect();
 
-  const client = await ClientModel.findByIdAndDelete(id);
+  const client = await ClientModel.findById(id);
   if (!client) {
     return jsonError('고객을 찾을 수 없습니다', 404);
   }
 
+  const expenseCount = await ExpenseModel.countDocuments({ clientId: id });
+  if (expenseCount > 0) {
+    return jsonError('연결된 경비가 있어 삭제할 수 없습니다', 409);
+  }
+
+  await client.deleteOne();
   return NextResponse.json({ success: true });
 }

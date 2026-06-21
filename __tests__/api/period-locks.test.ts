@@ -6,6 +6,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { ClientModel } from '@/models/Client';
 import { PeriodLockModel } from '@/models/PeriodLock';
 import { ProjectModel } from '@/models/Project';
+import { ExpenseModel } from '@/models/Expense';
 import { TimeLogModel } from '@/models/TimeLog';
 import { UserModel } from '@/models/User';
 import { parseDateOnlySeoul } from '@/lib/dates';
@@ -68,6 +69,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await PeriodLockModel.deleteMany({});
+  await ExpenseModel.deleteMany({});
   await TimeLogModel.deleteMany({});
   await ProjectModel.deleteMany({});
   await ClientModel.deleteMany({});
@@ -162,6 +164,39 @@ describe('POST /api/period-locks', () => {
     );
     expect(res.status).toBe(403);
   });
+
+  it('locks Expenses in monthly range', async () => {
+    const inRange = parseDateOnlySeoul('2026-03-15')!;
+    const outOfRange = parseDateOnlySeoul('2026-04-01')!;
+
+    await ExpenseModel.create({
+      userId,
+      clientId,
+      projectId,
+      expenseType: 'Core',
+      amount: 10000,
+      date: inRange,
+      description: 'March expense',
+    });
+    await ExpenseModel.create({
+      userId,
+      expenseType: 'Overhead',
+      amount: 5000,
+      date: outOfRange,
+      description: 'April expense',
+    });
+
+    mockSession('Admin');
+    const res = await createPeriodLock(
+      makeRequest('POST', 'http://localhost/api/period-locks', { year: 2026, month: 3 }),
+    );
+    expect(res.status).toBe(201);
+
+    const locked = await ExpenseModel.findOne({ description: 'March expense' });
+    const unlocked = await ExpenseModel.findOne({ description: 'April expense' });
+    expect(locked?.lockedAt).toBeDefined();
+    expect(unlocked?.lockedAt).toBeUndefined();
+  });
 });
 
 describe('DELETE /api/period-locks/[id]', () => {
@@ -194,6 +229,37 @@ describe('DELETE /api/period-locks/[id]', () => {
     const logAfter = await TimeLogModel.findOne({ description: 'Work' });
     expect(logAfter?.lockedAt).toBeUndefined();
     expect(await PeriodLockModel.countDocuments()).toBe(0);
+  });
+
+  it('clears lockedAt on affected Expenses', async () => {
+    const date = parseDateOnlySeoul('2026-03-10')!;
+    await ExpenseModel.create({
+      userId,
+      clientId,
+      projectId,
+      expenseType: 'Core',
+      amount: 8000,
+      date,
+      description: 'Expense work',
+    });
+
+    mockSession('Admin');
+    const createRes = await createPeriodLock(
+      makeRequest('POST', 'http://localhost/api/period-locks', { year: 2026, month: 3 }),
+    );
+    const created = await createRes.json();
+
+    const expenseBefore = await ExpenseModel.findOne({ description: 'Expense work' });
+    expect(expenseBefore?.lockedAt).toBeDefined();
+
+    const deleteRes = await deletePeriodLock(
+      makeRequest('DELETE', `http://localhost/api/period-locks/${created._id}`),
+      { params: Promise.resolve({ id: created._id }) },
+    );
+    expect(deleteRes.status).toBe(200);
+
+    const expenseAfter = await ExpenseModel.findOne({ description: 'Expense work' });
+    expect(expenseAfter?.lockedAt).toBeUndefined();
   });
 });
 

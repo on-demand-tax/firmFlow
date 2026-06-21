@@ -4,6 +4,9 @@
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { ClientModel } from '@/models/Client';
+import { ExpenseModel } from '@/models/Expense';
+import { ProjectModel } from '@/models/Project';
+import { UserModel } from '@/models/User';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -71,6 +74,9 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  await ExpenseModel.deleteMany({});
+  await ProjectModel.deleteMany({});
+  await UserModel.deleteMany({});
   await ClientModel.deleteMany({});
   jest.clearAllMocks();
   mockCreateClientFolder.mockResolvedValue({ id: 'drive-folder-123' });
@@ -190,6 +196,43 @@ describe('PATCH /api/clients/[id]', () => {
 });
 
 describe('DELETE /api/clients/[id]', () => {
+  it('returns 409 when Expenses exist', async () => {
+    mockSession('Approver');
+    const user = await UserModel.create({
+      email: 'exp-user@yourfirm.com',
+      name: 'Exp User',
+      role: 'Preparer',
+    });
+    const client = await ClientModel.create({
+      name: 'Has Expenses',
+      clientCode: 'HEX01',
+      businessRegistrationNumber: '111',
+      contactPerson: 'A',
+      googleDriveFolderId: 'f1',
+    });
+    const project = await ProjectModel.create({
+      clientId: client._id,
+      projectName: 'P1',
+    });
+    await ExpenseModel.create({
+      userId: user._id,
+      clientId: client._id,
+      projectId: project._id,
+      expenseType: 'Core',
+      amount: 1000,
+      date: new Date('2026-03-01'),
+      description: 'Expense',
+    });
+
+    const res = await deleteClient(
+      makeRequest('DELETE', `http://localhost/api/clients/${client._id}`),
+      { params: Promise.resolve({ id: client._id.toString() }) },
+    );
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain('경비');
+  });
+
   it('deletes client', async () => {
     mockSession('Approver');
     const client = await ClientModel.create({

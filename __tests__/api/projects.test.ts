@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { ClientModel } from '@/models/Client';
 import { ProjectModel } from '@/models/Project';
+import { ExpenseModel } from '@/models/Expense';
 import { TimeLogModel } from '@/models/TimeLog';
 import { UserModel } from '@/models/User';
 
@@ -67,6 +68,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  await ExpenseModel.deleteMany({});
   await TimeLogModel.deleteMany({});
   await ProjectModel.deleteMany({});
   await ClientModel.deleteMany({});
@@ -118,6 +120,31 @@ describe('POST /api/projects', () => {
 });
 
 describe('DELETE /api/projects/[id]', () => {
+  it('returns 409 when Expenses exist', async () => {
+    mockSession('Approver');
+    const project = await ProjectModel.create({
+      clientId,
+      projectName: 'Has Expenses',
+    });
+    await ExpenseModel.create({
+      userId,
+      clientId,
+      projectId: project._id,
+      expenseType: 'Core',
+      amount: 5000,
+      date: new Date('2026-03-01'),
+      description: 'Expense',
+    });
+
+    const res = await deleteProject(
+      makeRequest('DELETE', `http://localhost/api/projects/${project._id}`),
+      { params: Promise.resolve({ id: project._id.toString() }) },
+    );
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain('경비');
+  });
+
   it('returns 409 when TimeLogs exist', async () => {
     mockSession('Approver');
     const project = await ProjectModel.create({

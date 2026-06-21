@@ -49,3 +49,25 @@ export function canEditTimeLog(sessionUser: SessionUser, log: TimeLogLike): bool
 
   return log.status === 'Pending' || log.status === 'Rejected';
 }
+
+export interface ExpenseLike {
+  userId: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  lockedAt?: Date | null;
+}
+
+export function canEditExpense(sessionUser: SessionUser, expense: ExpenseLike): boolean {
+  if (expense.lockedAt) {
+    return false;
+  }
+
+  if (sessionUser.role === 'Admin' || sessionUser.role === 'Approver') {
+    return true;
+  }
+
+  if (expense.userId !== sessionUser.userId) {
+    return false;
+  }
+
+  return expense.status === 'Pending' || expense.status === 'Rejected';
+}

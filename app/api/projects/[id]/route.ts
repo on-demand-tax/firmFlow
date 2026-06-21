@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
 import { ProjectModel } from '@/models/Project';
+import { ExpenseModel } from '@/models/Expense';
 import { TimeLogModel } from '@/models/TimeLog';
 
 function serializeProject(project: {
@@ -80,6 +81,11 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const project = await ProjectModel.findById(id);
   if (!project) {
     return jsonError('프로젝트를 찾을 수 없습니다', 404);
+  }
+
+  const expenseCount = await ExpenseModel.countDocuments({ projectId: id });
+  if (expenseCount > 0) {
+    return jsonError('연결된 경비가 있어 삭제할 수 없습니다', 409);
   }
 
   const timeLogCount = await TimeLogModel.countDocuments({ projectId: id });
