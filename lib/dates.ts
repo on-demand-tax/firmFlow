@@ -1,5 +1,39 @@
 const SEOUL_OFFSET_MS = 9 * 60 * 60 * 1000;
 
+export function parseDateOnlySeoul(dateInput: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateInput);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day) - SEOUL_OFFSET_MS);
+  if (getSeoulDateKey(parsed) !== dateInput) return null;
+  return parsed;
+}
+
+export function getSeoulDateKey(date: Date): string {
+  const seoul = new Date(date.getTime() + SEOUL_OFFSET_MS);
+  const y = seoul.getUTCFullYear();
+  const m = String(seoul.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(seoul.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function getDayRangeSeoul(date: Date): { start: Date; end: Date } {
+  const start = parseDateOnlySeoul(getSeoulDateKey(date))!;
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return { start, end };
+}
+
+export function datesOverlapInclusive(
+  aStart: Date,
+  aEnd: Date,
+  bStart: Date,
+  bEnd: Date,
+): boolean {
+  return aStart <= bEnd && bStart <= aEnd;
+}
+
 export function getMonthRangeSeoul(
   year: number,
   month: number,
