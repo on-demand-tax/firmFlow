@@ -1,10 +1,11 @@
 import { parseDateOnlySeoul } from '@/lib/dates';
 import { resolveExpenseCurrency, type ExpenseCurrency } from '@/lib/currency';
+import { authorDisplayName, extractUserIdString } from '@/lib/author-display';
+import { fetchUsersByIds } from '@/lib/fetch-users-by-ids';
 import { parseExpenseFilingPeriod } from '@/lib/expense-filing-periods';
 import { parseExpensePaymentMethod } from '@/lib/expense-payment-methods';
 import { parseExpensePurpose } from '@/lib/expense-purposes';
 import { ProjectModel } from '@/models/Project';
-import { UserModel } from '@/models/User';
 import type { IExpense } from '@/models/Expense';
 
 export function expenseCurrency(expense: { currency?: ExpenseCurrency | null }): ExpenseCurrency {
@@ -24,7 +25,7 @@ export function serializeExpense(
 
   return {
     _id: String(expense._id),
-    userId: String(expense.userId),
+    userId: extractUserIdString(expense.userId),
     userName: options?.userName,
     userEmail: options?.userEmail,
     clientId: expense.clientId ? String(expense.clientId) : undefined,
@@ -48,16 +49,14 @@ export function serializeExpense(
 }
 
 export async function serializeExpensesWithUsers(expenses: IExpense[]) {
-  const userIds = [...new Set(expenses.map((expense) => String(expense.userId)))];
-  const users = await UserModel.find({ _id: { $in: userIds } }).select('name email');
-  const userById = new Map(
-    users.map((u) => [String(u._id), { name: u.name, email: u.email }] as const),
-  );
+  const userById = await fetchUsersByIds(expenses.map((expense) => expense.userId));
 
   return expenses.map((expense) => {
-    const author = userById.get(String(expense.userId));
+    const userId = extractUserIdString(expense.userId);
+    const author = userById.get(userId);
+    const userName = authorDisplayName(author);
     return serializeExpense(expense, {
-      userName: author?.name,
+      userName,
       userEmail: author?.email,
     });
   });

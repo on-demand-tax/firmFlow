@@ -28,11 +28,13 @@ import {
   type ExpensePaymentMethod,
 } from '@/lib/expense-payment-methods';
 import { getExpensePurposeLabel, type ExpensePurpose } from '@/lib/expense-purposes';
+import { resolveAuthorLabel } from '@/lib/author-display';
 
 interface TimeLog {
   _id: string;
   userId: string;
   userName?: string;
+  userEmail?: string;
   clientId: string;
   projectId: string;
   date: string;
@@ -47,6 +49,7 @@ interface Expense {
   _id: string;
   userId: string;
   userName?: string;
+  userEmail?: string;
   expenseType: 'Core' | 'Overhead';
   clientId?: string;
   projectId?: string;
@@ -60,6 +63,12 @@ interface Expense {
   notes?: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   receiptUrl?: string;
+}
+
+interface UserOption {
+  _id: string;
+  name: string;
+  email: string;
 }
 
 interface ProjectOption {
@@ -107,13 +116,17 @@ function expenseClassificationLabel(expense: Expense) {
   return parts.length > 0 ? parts.join(' · ') : '—';
 }
 
-function authorLabel(item: { userName?: string; userId: string }) {
-  return item.userName ?? item.userId;
+function authorLabel(
+  item: { userName?: string; userEmail?: string; userId: string },
+  userById: Record<string, UserOption>,
+) {
+  return resolveAuthorLabel(item, userById);
 }
 
 export default function ApprovalsPage() {
   const [logs, setLogs] = useState<TimeLog[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [error, setError] = useState('');
@@ -124,11 +137,13 @@ export default function ApprovalsPage() {
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.value, p]));
   const clientMap = Object.fromEntries(clients.map((c) => [c.value, c]));
+  const userMap = Object.fromEntries(users.map((user) => [user._id, user]));
 
   const loadData = useCallback(async () => {
-    const [projectsRes, clientsRes, logsRes, expensesRes] = await Promise.all([
+    const [projectsRes, clientsRes, usersRes, logsRes, expensesRes] = await Promise.all([
       fetch('/api/projects/options'),
       fetch('/api/clients/options'),
+      fetch('/api/users'),
       fetch('/api/timelogs'),
       fetch('/api/expenses'),
     ]);
@@ -138,6 +153,9 @@ export default function ApprovalsPage() {
     }
     if (clientsRes.ok) {
       setClients(await clientsRes.json());
+    }
+    if (usersRes.ok) {
+      setUsers(await usersRes.json());
     }
     if (logsRes.ok) {
       const all: TimeLog[] = await logsRes.json();
@@ -313,14 +331,14 @@ export default function ApprovalsPage() {
                   {logs.map((log) => {
                     const project = projectMap[log.projectId];
                     const busy = actingId === `timelog:${log._id}`;
-                    const summary = `타임로그 · ${authorLabel(log)} · ${formatDate(log.date)}`;
+                    const summary = `타임로그 · ${authorLabel(log, userMap)} · ${formatDate(log.date)}`;
                     return (
                       <DataRecordCard key={log._id}>
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-semibold">{formatDate(log.date)}</p>
                           <Badge variant="secondary">대기</Badge>
                         </div>
-                        <DataRecordRow label="작성자">{authorLabel(log)}</DataRecordRow>
+                        <DataRecordRow label="작성자">{authorLabel(log, userMap)}</DataRecordRow>
                         <DataRecordRow label="프로젝트">
                           {project ? `${project.clientName} — ${project.label}` : log.projectId}
                         </DataRecordRow>
@@ -372,11 +390,11 @@ export default function ApprovalsPage() {
                     {logs.map((log) => {
                       const project = projectMap[log.projectId];
                       const busy = actingId === `timelog:${log._id}`;
-                      const summary = `타임로그 · ${authorLabel(log)} · ${formatDate(log.date)}`;
+                      const summary = `타임로그 · ${authorLabel(log, userMap)} · ${formatDate(log.date)}`;
                       return (
                         <TableRow key={log._id}>
                           <TableCell>{formatDate(log.date)}</TableCell>
-                          <TableCell>{authorLabel(log)}</TableCell>
+                          <TableCell>{authorLabel(log, userMap)}</TableCell>
                           <TableCell>
                             {project ? `${project.clientName} — ${project.label}` : log.projectId}
                           </TableCell>
@@ -433,14 +451,14 @@ export default function ApprovalsPage() {
                 <div className="flex flex-col gap-3">
                   {expenses.map((expense) => {
                     const busy = actingId === `expense:${expense._id}`;
-                    const summary = `경비 · ${authorLabel(expense)} · ${formatDate(expense.date)}`;
+                    const summary = `경비 · ${authorLabel(expense, userMap)} · ${formatDate(expense.date)}`;
                     return (
                       <DataRecordCard key={expense._id}>
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-semibold">{formatDate(expense.date)}</p>
                           <Badge variant="secondary">대기</Badge>
                         </div>
-                        <DataRecordRow label="작성자">{authorLabel(expense)}</DataRecordRow>
+                        <DataRecordRow label="작성자">{authorLabel(expense, userMap)}</DataRecordRow>
                         <DataRecordRow label="유형">
                           {expenseTypeLabel[expense.expenseType]}
                         </DataRecordRow>
@@ -512,11 +530,11 @@ export default function ApprovalsPage() {
                   <TableBody>
                     {expenses.map((expense) => {
                       const busy = actingId === `expense:${expense._id}`;
-                      const summary = `경비 · ${authorLabel(expense)} · ${formatDate(expense.date)}`;
+                      const summary = `경비 · ${authorLabel(expense, userMap)} · ${formatDate(expense.date)}`;
                       return (
                         <TableRow key={expense._id}>
                           <TableCell>{formatDate(expense.date)}</TableCell>
-                          <TableCell>{authorLabel(expense)}</TableCell>
+                          <TableCell>{authorLabel(expense, userMap)}</TableCell>
                           <TableCell>{expenseTypeLabel[expense.expenseType]}</TableCell>
                           <TableCell className="max-w-[14rem] text-sm">
                             {expenseClassificationLabel(expense)}

@@ -286,6 +286,15 @@ describe('GET /api/expenses', () => {
     const data = await res.json();
     expect(data).toHaveLength(2);
   });
+
+  it('returns userName for approver list', async () => {
+    mockSession('Approver', { userId: approverId });
+    const res = await listExpenses(makeRequest('GET', 'http://localhost/api/expenses'));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const ownExpense = data.find((expense: { description: string }) => expense.description === 'Own expense');
+    expect(ownExpense?.userName).toBe('Preparer');
+  });
 });
 
 describe('PATCH /api/expenses/[id]', () => {

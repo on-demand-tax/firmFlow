@@ -3,9 +3,10 @@ import {
   isValidActivityForProjectType,
   projectTypeRequiresActivity,
 } from '@/lib/project-activities';
+import { authorDisplayName, extractUserIdString } from '@/lib/author-display';
+import { fetchUsersByIds } from '@/lib/fetch-users-by-ids';
 import { normalizeLegacyProject } from '@/lib/project-types';
 import { ProjectModel } from '@/models/Project';
-import { UserModel } from '@/models/User';
 import { TimeLogModel } from '@/models/TimeLog';
 import { getDayRangeSeoul, parseDateOnlySeoul } from '@/lib/dates';
 import type { ITimeLog } from '@/models/TimeLog';
@@ -20,7 +21,7 @@ export function serializeTimeLog(
   const activity = log.activity;
   return {
     _id: String(log._id),
-    userId: String(log.userId),
+    userId: extractUserIdString(log.userId),
     userName: options?.userName,
     userEmail: options?.userEmail,
     clientId: String(log.clientId),
@@ -111,11 +112,10 @@ export async function resolveTimeLogContent(body: {
 
 export async function serializeTimeLogsWithProjects(logs: ITimeLog[]) {
   const projectIds = [...new Set(logs.map((log) => String(log.projectId)))];
-  const userIds = [...new Set(logs.map((log) => String(log.userId)))];
 
-  const [projects, users] = await Promise.all([
+  const [projects, userById] = await Promise.all([
     ProjectModel.find({ _id: { $in: projectIds } }).select('projectType workSubtype'),
-    UserModel.find({ _id: { $in: userIds } }).select('name email'),
+    fetchUsersByIds(logs.map((log) => log.userId)),
   ]);
 
   const typeByProjectId = new Map(
@@ -128,15 +128,13 @@ export async function serializeTimeLogsWithProjects(logs: ITimeLog[]) {
     }),
   );
 
-  const userById = new Map(
-    users.map((u) => [String(u._id), { name: u.name, email: u.email }] as const),
-  );
-
   return logs.map((log) => {
-    const author = userById.get(String(log.userId));
+    const userId = extractUserIdString(log.userId);
+    const author = userById.get(userId);
+    const userName = authorDisplayName(author);
     return serializeTimeLog(log, {
       projectType: typeByProjectId.get(String(log.projectId)),
-      userName: author?.name,
+      userName,
       userEmail: author?.email,
     });
   });
