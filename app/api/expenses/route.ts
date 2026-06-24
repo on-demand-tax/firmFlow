@@ -11,6 +11,7 @@ import {
   parseExpenseCurrency,
   serializeExpense,
   serializeExpensesWithUsers,
+  validateExpenseClassificationFields,
   validateProjectBelongsToClient,
 } from '@/lib/expense-helpers';
 
@@ -38,10 +39,32 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { expenseType, clientId, projectId, amount, currency, date, description } = body;
+  const {
+    expenseType,
+    clientId,
+    projectId,
+    paymentMethod,
+    expensePurpose,
+    filingPeriod,
+    amount,
+    currency,
+    date,
+    description,
+    notes,
+  } = body;
 
   if (!expenseType || amount === undefined || !date || !description) {
     return jsonError('필수 항목을 입력해 주세요', 400);
+  }
+
+  const classification = validateExpenseClassificationFields({
+    paymentMethod,
+    expensePurpose,
+    filingPeriod,
+    notes,
+  });
+  if (!classification.ok) {
+    return jsonError(classification.error, 400);
   }
 
   if (expenseType !== 'Core' && expenseType !== 'Overhead') {
@@ -87,10 +110,14 @@ export async function POST(request: Request) {
     clientId: expenseType === 'Core' ? clientId : null,
     projectId: expenseType === 'Core' ? projectId : null,
     expenseType,
+    paymentMethod: classification.paymentMethod,
+    expensePurpose: classification.expensePurpose,
+    filingPeriod: classification.filingPeriod,
     amount,
     currency: parsedCurrency,
     date: parsedDate,
     description: String(description).trim(),
+    notes: classification.notes,
     status: 'Pending',
   });
 

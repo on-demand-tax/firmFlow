@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { TimesheetForm, type ProjectOption } from '@/components/app/TimesheetForm';
+import { TimesheetForm, type ProjectOption, type TimesheetFormInitialValues } from '@/components/app/TimesheetForm';
 import { WeekdayHoursSummary } from '@/components/app/WeekdayHoursSummary';
 import TimesheetGrid from '@/components/TimesheetGrid';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { canPreparerEditEntry } from '@/lib/entry-editability';
+import { toDateInputValue } from '@/lib/dates';
 
 interface TimeLog {
   _id: string;
@@ -30,6 +32,8 @@ export default function TimesheetPage() {
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'Pending' | 'Approved' | 'Rejected'
   >('all');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editInitial, setEditInitial] = useState<TimesheetFormInitialValues | null>(null);
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.value, p]));
 
@@ -48,6 +52,7 @@ export default function TimesheetPage() {
           status: log.status,
           rejectionReason: log.rejectionReason,
           lockedAt: log.lockedAt,
+          canEdit: canPreparerEditEntry(log),
         };
       }),
     [logs, projectMap],
@@ -101,8 +106,11 @@ export default function TimesheetPage() {
     setSubmitting(true);
     setError('');
 
-    const res = await fetch('/api/timelogs', {
-      method: 'POST',
+    const url = editingId ? `/api/timelogs/${editingId}` : '/api/timelogs';
+    const method = editingId ? 'PATCH' : 'POST';
+
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(values),
     });
@@ -115,7 +123,34 @@ export default function TimesheetPage() {
       return;
     }
 
+    cancelEdit();
     await loadData();
+  }
+
+  function startEdit(log: TimeLog) {
+    const project = projectMap[log.projectId];
+    setEditingId(log._id);
+    setEditInitial({
+      date: toDateInputValue(log.date),
+      projectId: log.projectId,
+      activity: log.activity,
+      hours: log.hours,
+      description: log.description,
+      entryMode: project?.isNonBillable ? 'nonBillable' : 'client',
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditInitial(null);
+  }
+
+  function handleGridEdit(entryId: string) {
+    const log = logs.find((item) => item._id === entryId);
+    if (log && canPreparerEditEntry(log)) {
+      startEdit(log);
+    }
   }
 
   return (
@@ -127,10 +162,18 @@ export default function TimesheetPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>시간 등록</CardTitle>
+          <CardTitle>{editingId ? '시간 수정' : '시간 등록'}</CardTitle>
         </CardHeader>
         <CardContent>
-          <TimesheetForm projects={projects} onSubmit={handleSubmit} submitting={submitting} />
+          <TimesheetForm
+            key={editingId ?? 'new'}
+            projects={projects}
+            editingId={editingId}
+            initialValues={editInitial}
+            onCancelEdit={cancelEdit}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+          />
           {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>
@@ -166,7 +209,11 @@ export default function TimesheetPage() {
           {loading ? (
             <p className="text-muted-foreground">불러오는 중...</p>
           ) : (
-            <TimesheetGrid viewMode="auto" entries={filteredEntries} />
+            <TimesheetGrid
+              viewMode="auto"
+              entries={filteredEntries}
+              onEdit={(entry) => handleGridEdit(entry.id)}
+            />
           )}
         </CardContent>
       </Card>

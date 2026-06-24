@@ -90,4 +90,20 @@ describe('TimesheetGrid Layout Adaptability', () => {
     expect(lockedRow).toHaveClass('opacity-50');
     expect(screen.queryByText(/\(마감\)/)).not.toBeInTheDocument();
   });
+
+  it('shows edit button only for editable entries', () => {
+    const entries: TimesheetGridEntry[] = [
+      { ...sampleEntries[0], canEdit: true },
+      { ...sampleEntries[1], canEdit: false },
+    ];
+
+    const onEdit = jest.fn();
+    render(<TimesheetGrid viewMode="desktop" entries={entries} onEdit={onEdit} />);
+
+    const editButtons = screen.getAllByRole('button', { name: '수정' });
+    expect(editButtons).toHaveLength(1);
+
+    fireEvent.click(editButtons[0]);
+    expect(onEdit).toHaveBeenCalledWith(entries[0]);
+  });
 });

@@ -8,6 +8,7 @@ import { ExpenseModel } from '@/models/Expense';
 import { ProjectModel } from '@/models/Project';
 import { TimeLogModel } from '@/models/TimeLog';
 import { UserModel } from '@/models/User';
+import { overheadClassificationFixture } from '@/__tests__/helpers/expense-fixtures';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -117,6 +118,7 @@ describe('GET /api/approvals/pending-count', () => {
     await ExpenseModel.create({
       userId: preparerId,
       expenseType: 'Overhead',
+      ...overheadClassificationFixture,
       amount: 10000,
       currency: 'KRW',
       date: new Date('2026-06-15'),

@@ -7,6 +7,7 @@ import { ClientModel } from '@/models/Client';
 import { ExpenseModel } from '@/models/Expense';
 import { ProjectModel } from '@/models/Project';
 import { UserModel } from '@/models/User';
+import { expenseClassificationFixture } from '@/__tests__/helpers/expense-fixtures';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -154,6 +155,7 @@ describe('POST /api/expenses/upload', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...expenseClassificationFixture,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Travel',

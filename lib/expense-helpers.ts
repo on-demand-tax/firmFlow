@@ -1,5 +1,8 @@
 import { parseDateOnlySeoul } from '@/lib/dates';
 import { resolveExpenseCurrency, type ExpenseCurrency } from '@/lib/currency';
+import { parseExpenseFilingPeriod } from '@/lib/expense-filing-periods';
+import { parseExpensePaymentMethod } from '@/lib/expense-payment-methods';
+import { parseExpensePurpose } from '@/lib/expense-purposes';
 import { ProjectModel } from '@/models/Project';
 import { UserModel } from '@/models/User';
 import type { IExpense } from '@/models/Expense';
@@ -27,12 +30,16 @@ export function serializeExpense(
     clientId: expense.clientId ? String(expense.clientId) : undefined,
     projectId: expense.projectId ? String(expense.projectId) : undefined,
     expenseType: expense.expenseType,
+    paymentMethod: expense.paymentMethod,
+    expensePurpose: expense.expensePurpose,
+    filingPeriod: expense.filingPeriod ?? undefined,
     amount: expense.amount,
     currency: expenseCurrency(expense),
     date: expense.date,
     receiptUrl,
     googleDriveFileId,
     description: expense.description,
+    notes: expense.notes?.trim() || undefined,
     status: expense.status,
     lockedAt: expense.lockedAt ?? undefined,
     approvedBy: expense.approvedBy ? String(expense.approvedBy) : undefined,
@@ -79,4 +86,47 @@ export async function validateProjectBelongsToClient(
   const project = await ProjectModel.findById(projectId).select('clientId');
   if (!project) return false;
   return String(project.clientId) === clientId;
+}
+
+export function parseExpenseNotes(value: unknown): string | undefined {
+  if (value === null || value === undefined || value === '') return undefined;
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+export function validateExpenseClassificationFields(body: {
+  paymentMethod?: unknown;
+  expensePurpose?: unknown;
+  filingPeriod?: unknown;
+  notes?: unknown;
+}):
+  | { ok: true; paymentMethod: NonNullable<ReturnType<typeof parseExpensePaymentMethod>>; expensePurpose: NonNullable<ReturnType<typeof parseExpensePurpose>>; filingPeriod: ReturnType<typeof parseExpenseFilingPeriod>; notes?: string }
+  | { ok: false; error: string } {
+  const paymentMethod = parseExpensePaymentMethod(body.paymentMethod);
+  if (!paymentMethod) {
+    return { ok: false, error: '지출 방법을 선택해 주세요' };
+  }
+
+  const expensePurpose = parseExpensePurpose(body.expensePurpose);
+  if (!expensePurpose) {
+    return { ok: false, error: '지출 용도를 선택해 주세요' };
+  }
+
+  if (
+    body.filingPeriod !== undefined &&
+    body.filingPeriod !== null &&
+    body.filingPeriod !== '' &&
+    !parseExpenseFilingPeriod(body.filingPeriod)
+  ) {
+    return { ok: false, error: '관련 신고 기간이 올바르지 않습니다' };
+  }
+
+  return {
+    ok: true,
+    paymentMethod,
+    expensePurpose,
+    filingPeriod: parseExpenseFilingPeriod(body.filingPeriod),
+    notes: parseExpenseNotes(body.notes),
+  };
 }

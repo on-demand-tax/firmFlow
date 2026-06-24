@@ -8,6 +8,7 @@ import { ProjectModel } from '@/models/Project';
 import { ExpenseModel } from '@/models/Expense';
 import { TimeLogModel } from '@/models/TimeLog';
 import { UserModel } from '@/models/User';
+import { expenseClassificationFixture } from '@/__tests__/helpers/expense-fixtures';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -218,6 +219,7 @@ describe('DELETE /api/projects/[id]', () => {
       clientId,
       projectId: project._id,
       expenseType: 'Core',
+      ...expenseClassificationFixture,
       amount: 5000,
       date: new Date('2026-03-01'),
       description: 'Expense',

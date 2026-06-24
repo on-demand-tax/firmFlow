@@ -10,6 +10,10 @@ import { ExpenseModel } from '@/models/Expense';
 import { TimeLogModel } from '@/models/TimeLog';
 import { UserModel } from '@/models/User';
 import { parseDateOnlySeoul } from '@/lib/dates';
+import {
+  expenseClassificationFixture,
+  overheadClassificationFixture,
+} from '@/__tests__/helpers/expense-fixtures';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -174,6 +178,7 @@ describe('POST /api/period-locks', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...expenseClassificationFixture,
       amount: 10000,
       date: inRange,
       description: 'March expense',
@@ -181,6 +186,7 @@ describe('POST /api/period-locks', () => {
     await ExpenseModel.create({
       userId,
       expenseType: 'Overhead',
+      ...overheadClassificationFixture,
       amount: 5000,
       date: outOfRange,
       description: 'April expense',
@@ -238,6 +244,7 @@ describe('DELETE /api/period-locks/[id]', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...expenseClassificationFixture,
       amount: 8000,
       date,
       description: 'Expense work',

@@ -1,0 +1,29 @@
+#!/bin/sh
+set -e
+
+COMMIT_MSG_FILE=$1
+GIT_DIR="$(git rev-parse --git-dir)"
+
+# merge 커밋은 건너뜀
+if [ -f "$GIT_DIR/MERGE_HEAD" ]; then
+  exit 0
+fi
+
+if [ ! -f "$COMMIT_MSG_FILE" ]; then
+  exit 0
+fi
+
+FIRST_LINE=$(head -n 1 "$COMMIT_MSG_FILE" | tr -d '\r')
+
+case "$FIRST_LINE" in
+  chore\(changelog\):*) exit 0 ;;
+  *\[skip\ changelog\]*) exit 0 ;;
+esac
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+npm run changelog:update -- "$COMMIT_MSG_FILE"
+git add data/changelog.json package.json
+
+exit 0

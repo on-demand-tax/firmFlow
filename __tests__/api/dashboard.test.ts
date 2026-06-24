@@ -10,6 +10,10 @@ import { TimeLogModel } from '@/models/TimeLog';
 import { UserModel } from '@/models/User';
 import { parseDateOnlySeoul } from '@/lib/dates';
 import { parseDashboardPeriod } from '@/lib/dashboard';
+import {
+  expenseClassificationFixture,
+  overheadClassificationFixture,
+} from '@/__tests__/helpers/expense-fixtures';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -130,6 +134,7 @@ async function seedDashboardData() {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...expenseClassificationFixture,
       amount: 1000,
       date: logDate,
       description: 'Approved core',
@@ -140,6 +145,7 @@ async function seedDashboardData() {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...expenseClassificationFixture,
       amount: 500,
       date: logDate,
       description: 'Pending core',
@@ -148,6 +154,7 @@ async function seedDashboardData() {
     {
       userId: preparerId,
       expenseType: 'Overhead',
+      ...overheadClassificationFixture,
       amount: 300,
       date: logDate,
       description: 'Approved overhead',
@@ -156,6 +163,7 @@ async function seedDashboardData() {
     {
       userId: preparerId,
       expenseType: 'Overhead',
+      ...overheadClassificationFixture,
       amount: 200,
       date: logDate,
       description: 'Pending overhead',
@@ -390,6 +398,7 @@ describe('GET /api/dashboard', () => {
         clientId,
         projectId,
         expenseType: 'Core',
+        ...expenseClassificationFixture,
         amount: 1000,
         currency: 'KRW',
         date: logDate,
@@ -401,6 +410,7 @@ describe('GET /api/dashboard', () => {
         clientId,
         projectId,
         expenseType: 'Core',
+        ...expenseClassificationFixture,
         amount: 50,
         currency: 'USD',
         date: logDate,
@@ -410,6 +420,7 @@ describe('GET /api/dashboard', () => {
       {
         userId: preparerId,
         expenseType: 'Overhead',
+        ...overheadClassificationFixture,
         amount: 200,
         currency: 'USD',
         date: logDate,

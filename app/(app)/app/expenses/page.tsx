@@ -12,12 +12,22 @@ import { ResponsiveDataView } from '@/components/app/ResponsiveDataView';
 import {
   ExpenseForm,
   type ClientOption,
+  type ExpenseFormInitialValues,
   type ExpenseFormValues,
   type ProjectOption,
 } from '@/components/app/ExpenseForm';
 import { formatMoney, type ExpenseCurrency } from '@/lib/currency';
+import { toDateInputValue } from '@/lib/dates';
+import { getExpenseFilingPeriodLabel, type ExpenseFilingPeriod } from '@/lib/expense-filing-periods';
+import {
+  getExpensePaymentMethodLabel,
+  type ExpensePaymentMethod,
+} from '@/lib/expense-payment-methods';
+import { getExpensePurposeLabel, type ExpensePurpose } from '@/lib/expense-purposes';
+import { canPreparerEditEntry } from '@/lib/entry-editability';
 import { lockedEntryClass, lockedEntryTitle } from '@/lib/locked-entry-styles';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -33,10 +43,14 @@ interface Expense {
   expenseType: 'Core' | 'Overhead';
   clientId?: string;
   projectId?: string;
+  paymentMethod?: ExpensePaymentMethod;
+  expensePurpose?: ExpensePurpose;
+  filingPeriod?: ExpenseFilingPeriod;
   amount: number;
   currency: ExpenseCurrency;
   date: string;
   description: string;
+  notes?: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   rejectionReason?: string;
   receiptUrl?: string;
@@ -62,6 +76,20 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('ko-KR');
 }
 
+function expenseClassificationLabel(expense: Expense) {
+  const parts: string[] = [];
+  if (expense.paymentMethod) {
+    parts.push(getExpensePaymentMethodLabel(expense.paymentMethod));
+  }
+  if (expense.expensePurpose) {
+    parts.push(getExpensePurposeLabel(expense.expensePurpose));
+  }
+  if (expense.filingPeriod) {
+    parts.push(getExpenseFilingPeriodLabel(expense.filingPeriod));
+  }
+  return parts.length > 0 ? parts.join(' · ') : '—';
+}
+
 export default function ExpensesPage() {
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
@@ -70,6 +98,9 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [viewRejectExpense, setViewRejectExpense] = useState<Expense | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editInitial, setEditInitial] = useState<ExpenseFormInitialValues | null>(null);
+  const [editReceiptUrl, setEditReceiptUrl] = useState<string | null>(null);
 
   const clientMap = Object.fromEntries(clients.map((c) => [c.value, c]));
   const projectMap = Object.fromEntries(projects.map((p) => [p.value, p]));
@@ -106,10 +137,14 @@ export default function ExpensesPage() {
 
     const body: Record<string, unknown> = {
       expenseType: values.expenseType,
+      paymentMethod: values.paymentMethod,
+      expensePurpose: values.expensePurpose,
+      filingPeriod: values.filingPeriod ?? null,
       amount: values.amount,
       currency: values.currency,
       date: values.date,
       description: values.description,
+      notes: values.notes ?? null,
     };
 
     if (values.expenseType === 'Core') {
@@ -117,8 +152,11 @@ export default function ExpensesPage() {
       body.projectId = values.projectId;
     }
 
-    const res = await fetch('/api/expenses', {
-      method: 'POST',
+    const url = editingId ? `/api/expenses/${editingId}` : '/api/expenses';
+    const method = editingId ? 'PATCH' : 'POST';
+
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
@@ -130,7 +168,8 @@ export default function ExpensesPage() {
       return;
     }
 
-    const created = await res.json();
+    const saved = await res.json();
+    const expenseId = editingId ?? saved._id;
 
     if (values.receiptFile) {
       const formData = new FormData();
@@ -139,7 +178,7 @@ export default function ExpensesPage() {
       if (values.expenseType === 'Core' && values.clientId) {
         formData.append('clientId', values.clientId);
       }
-      formData.append('expenseId', created._id);
+      formData.append('expenseId', expenseId);
 
       const uploadRes = await fetch('/api/expenses/upload', {
         method: 'POST',
@@ -151,16 +190,43 @@ export default function ExpensesPage() {
         const data = await uploadRes.json();
         setError(
           data.error
-            ? `${data.error} (경비 항목은 등록되었습니다. 영수증을 다시 첨부해 등록해 주세요.)`
-            : '영수증 업로드에 실패했습니다. 경비 항목은 등록되었으니 영수증을 다시 첨부해 등록해 주세요.',
+            ? `${data.error} (경비 항목은 ${editingId ? '수정' : '등록'}되었습니다. 영수증을 다시 첨부해 주세요.)`
+            : `영수증 업로드에 실패했습니다. 경비 항목은 ${editingId ? '수정' : '등록'}되었으니 영수증을 다시 첨부해 주세요.`,
         );
+        cancelEdit();
         await loadData();
         return;
       }
     }
 
     setSubmitting(false);
+    cancelEdit();
     await loadData();
+  }
+
+  function startEdit(expense: Expense) {
+    setEditingId(expense._id);
+    setEditInitial({
+      expenseType: expense.expenseType,
+      clientId: expense.clientId,
+      projectId: expense.projectId,
+      paymentMethod: expense.paymentMethod ?? 'BizCreditCardRegistered',
+      expensePurpose: expense.expensePurpose ?? 'OfficeSupplies',
+      filingPeriod: expense.filingPeriod,
+      amount: expense.amount,
+      currency: expense.currency ?? 'KRW',
+      date: toDateInputValue(expense.date),
+      description: expense.description,
+      notes: expense.notes,
+    });
+    setEditReceiptUrl(expense.receiptUrl ?? null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditInitial(null);
+    setEditReceiptUrl(null);
   }
 
   function projectLabel(expense: Expense) {
@@ -211,12 +277,17 @@ export default function ExpensesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>경비 등록</CardTitle>
+          <CardTitle>{editingId ? '경비 수정' : '경비 등록'}</CardTitle>
         </CardHeader>
         <CardContent>
           <ExpenseForm
+            key={editingId ?? 'new'}
             clients={clients}
             projects={projects}
+            editingId={editingId}
+            initialValues={editInitial}
+            existingReceiptUrl={editReceiptUrl}
+            onCancelEdit={cancelEdit}
             onSubmit={handleSubmit}
             submitting={submitting}
           />
@@ -244,7 +315,18 @@ export default function ExpensesPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-semibold">{formatDate(expense.date)}</p>
-                        {expense.status === 'Rejected' ? (
+                        <div className="flex items-center gap-1">
+                          {canPreparerEditEntry(expense) && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => startEdit(expense)}
+                            >
+                              수정
+                            </Button>
+                          )}
+                          {expense.status === 'Rejected' ? (
                           <button
                             type="button"
                             className="inline-flex cursor-pointer"
@@ -260,15 +342,22 @@ export default function ExpensesPage() {
                             {statusLabel[expense.status]}
                           </Badge>
                         )}
+                        </div>
                       </div>
                       <DataRecordRow label="유형">
                         {expenseTypeLabel[expense.expenseType]}
+                      </DataRecordRow>
+                      <DataRecordRow label="지출 분류">
+                        {expenseClassificationLabel(expense)}
                       </DataRecordRow>
                       <DataRecordRow label="프로젝트">{projectLabel(expense)}</DataRecordRow>
                       <DataRecordRow label="금액">
                         {formatExpenseAmount(expense.amount, expense.currency ?? 'KRW')}
                       </DataRecordRow>
                       <DataRecordRow label="설명">{expense.description}</DataRecordRow>
+                      {expense.notes ? (
+                        <DataRecordRow label="비고">{expense.notes}</DataRecordRow>
+                      ) : null}
                       {expense.receiptUrl ? (
                         <DataRecordRow label="영수증">
                           <a
@@ -291,11 +380,13 @@ export default function ExpensesPage() {
                     <TableRow>
                       <TableHead>지출일</TableHead>
                       <TableHead>유형</TableHead>
+                      <TableHead>지출 분류</TableHead>
                       <TableHead>프로젝트</TableHead>
                       <TableHead>금액</TableHead>
                       <TableHead>설명</TableHead>
                       <TableHead>영수증</TableHead>
                       <TableHead>상태</TableHead>
+                      <TableHead className="w-[4.5rem]">작업</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -307,6 +398,9 @@ export default function ExpensesPage() {
                       >
                         <TableCell>{formatDate(expense.date)}</TableCell>
                         <TableCell>{expenseTypeLabel[expense.expenseType]}</TableCell>
+                        <TableCell className="max-w-[14rem] text-sm">
+                          {expenseClassificationLabel(expense)}
+                        </TableCell>
                         <TableCell>{projectLabel(expense)}</TableCell>
                         <TableCell>
                           {formatExpenseAmount(expense.amount, expense.currency ?? 'KRW')}
@@ -344,6 +438,18 @@ export default function ExpensesPage() {
                             >
                               {statusLabel[expense.status]}
                             </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {canPreparerEditEntry(expense) && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => startEdit(expense)}
+                            >
+                              수정
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>

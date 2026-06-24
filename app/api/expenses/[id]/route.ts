@@ -9,9 +9,13 @@ import {
   isValidAmount,
   parseExpenseDate,
   parseExpenseCurrency,
+  parseExpenseNotes,
   serializeExpense,
   validateProjectBelongsToClient,
 } from '@/lib/expense-helpers';
+import { parseExpenseFilingPeriod } from '@/lib/expense-filing-periods';
+import { parseExpensePaymentMethod } from '@/lib/expense-payment-methods';
+import { parseExpensePurpose } from '@/lib/expense-purposes';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -108,6 +112,38 @@ export async function PATCH(request: Request, context: RouteContext) {
     updates.description = String(body.description).trim();
   }
 
+  if (body.paymentMethod !== undefined) {
+    const parsed = parseExpensePaymentMethod(body.paymentMethod);
+    if (!parsed) {
+      return jsonError('지출 방법이 올바르지 않습니다', 400);
+    }
+    updates.paymentMethod = parsed;
+  }
+
+  if (body.expensePurpose !== undefined) {
+    const parsed = parseExpensePurpose(body.expensePurpose);
+    if (!parsed) {
+      return jsonError('지출 용도가 올바르지 않습니다', 400);
+    }
+    updates.expensePurpose = parsed;
+  }
+
+  if (body.filingPeriod !== undefined) {
+    if (body.filingPeriod === null || body.filingPeriod === '') {
+      updates.filingPeriod = null;
+    } else {
+      const parsed = parseExpenseFilingPeriod(body.filingPeriod);
+      if (!parsed) {
+        return jsonError('관련 신고 기간이 올바르지 않습니다', 400);
+      }
+      updates.filingPeriod = parsed;
+    }
+  }
+
+  if (body.notes !== undefined) {
+    updates.notes = parseExpenseNotes(body.notes);
+  }
+
   const nextType = (updates.expenseType as 'Core' | 'Overhead' | undefined) ?? expense.expenseType;
   const nextClientId =
     updates.clientId !== undefined ? updates.clientId : expense.clientId;
@@ -126,6 +162,17 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!belongs) {
       return jsonError('프로젝트가 해당 고객에 속하지 않습니다', 400);
     }
+  }
+
+  const mergedForValidation = {
+    paymentMethod: updates.paymentMethod ?? expense.paymentMethod,
+    expensePurpose: updates.expensePurpose ?? expense.expensePurpose,
+  };
+  if (!parseExpensePaymentMethod(mergedForValidation.paymentMethod)) {
+    return jsonError('지출 방법을 선택해 주세요', 400);
+  }
+  if (!parseExpensePurpose(mergedForValidation.expensePurpose)) {
+    return jsonError('지출 용도를 선택해 주세요', 400);
   }
 
   Object.assign(expense, updates);

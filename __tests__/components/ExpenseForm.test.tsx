@@ -15,6 +15,8 @@ const baseCoreValues: ExpenseFormValues = {
   expenseType: 'Core',
   clientId: 'client-1',
   projectId: 'proj-1',
+  paymentMethod: 'BizCreditCardRegistered',
+  expensePurpose: 'TravelTransport',
   amount: 50000,
   currency: 'KRW',
   date: '2026-06-20',
@@ -23,6 +25,8 @@ const baseCoreValues: ExpenseFormValues = {
 
 const baseOverheadValues: ExpenseFormValues = {
   expenseType: 'Overhead',
+  paymentMethod: 'ETaxInvoiceEmail',
+  expensePurpose: 'OfficeSupplies',
   amount: 12000,
   currency: 'USD',
   date: '2026-06-20',
@@ -52,6 +56,30 @@ describe('validateExpenseForm', () => {
 });
 
 describe('ExpenseForm', () => {
+  it('requires payment method and expense purpose', () => {
+    expect(
+      validateExpenseForm({
+        ...baseOverheadValues,
+        paymentMethod: '' as ExpenseFormValues['paymentMethod'],
+      }),
+    ).toBe('지출 방법을 선택해 주세요');
+    expect(
+      validateExpenseForm({
+        ...baseOverheadValues,
+        expensePurpose: '' as ExpenseFormValues['expensePurpose'],
+      }),
+    ).toBe('지출 용도를 선택해 주세요');
+  });
+
+  it('shows payment method and expense purpose fields', () => {
+    render(
+      <ExpenseForm clients={clients} projects={projects} onSubmit={jest.fn()} />,
+    );
+    expect(screen.getByLabelText('지출 방법')).toBeInTheDocument();
+    expect(screen.getByLabelText('지출 용도')).toBeInTheDocument();
+    expect(screen.getByLabelText('관련 신고 기간 (선택)')).toBeInTheDocument();
+  });
+
   it('shows client and project fields for Core expense', () => {
     render(
       <ExpenseForm clients={clients} projects={projects} onSubmit={jest.fn()} />,
@@ -79,6 +107,12 @@ describe('ExpenseForm', () => {
 
     fireEvent.change(screen.getByLabelText('지출일'), {
       target: { value: '2026-06-20' },
+    });
+    fireEvent.change(screen.getByLabelText('지출 방법'), {
+      target: { value: 'BizCreditCardRegistered' },
+    });
+    fireEvent.change(screen.getByLabelText('지출 용도'), {
+      target: { value: 'TravelTransport' },
     });
     fireEvent.change(screen.getByLabelText('금액'), {
       target: { value: '50000' },

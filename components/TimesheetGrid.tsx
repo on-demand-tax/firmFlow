@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { SimpleModal } from '@/components/app/SimpleModal';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { lockedEntryClass, lockedEntryTitle } from '@/lib/locked-entry-styles';
 import { useIsMobile } from '@/lib/use-media-query';
@@ -27,11 +28,13 @@ export interface TimesheetGridEntry {
   status: 'Pending' | 'Approved' | 'Rejected';
   rejectionReason?: string;
   lockedAt?: string;
+  canEdit?: boolean;
 }
 
 interface TimesheetGridProps {
   entries: TimesheetGridEntry[];
   viewMode: 'auto' | 'mobile' | 'desktop';
+  onEdit?: (entry: TimesheetGridEntry) => void;
 }
 
 const statusLabel: Record<TimesheetGridEntry['status'], string> = {
@@ -113,12 +116,30 @@ function RejectReasonModal({
   );
 }
 
+function EntryActions({
+  entry,
+  onEdit,
+}: {
+  entry: TimesheetGridEntry;
+  onEdit?: (entry: TimesheetGridEntry) => void;
+}) {
+  if (!entry.canEdit || !onEdit) return null;
+
+  return (
+    <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(entry)}>
+      수정
+    </Button>
+  );
+}
+
 function MobileCardStack({
   entries,
   onViewReject,
+  onEdit,
 }: {
   entries: TimesheetGridEntry[];
   onViewReject: (entry: TimesheetGridEntry) => void;
+  onEdit?: (entry: TimesheetGridEntry) => void;
 }) {
   if (entries.length === 0) {
     return (
@@ -137,9 +158,12 @@ function MobileCardStack({
           title={lockedEntryTitle(entry.lockedAt)}
         >
           <CardContent className="space-y-2 pt-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium">{formatDate(entry.date)}</span>
-              <EntryStatusBadge entry={entry} onViewReject={() => onViewReject(entry)} />
+              <div className="flex items-center gap-1">
+                <EntryActions entry={entry} onEdit={onEdit} />
+                <EntryStatusBadge entry={entry} onViewReject={() => onViewReject(entry)} />
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">
               {entry.clientName} — {entry.projectLabel}
@@ -159,9 +183,11 @@ function MobileCardStack({
 function DesktopEntryList({
   entries,
   onViewReject,
+  onEdit,
 }: {
   entries: TimesheetGridEntry[];
   onViewReject: (entry: TimesheetGridEntry) => void;
+  onEdit?: (entry: TimesheetGridEntry) => void;
 }) {
   if (entries.length === 0) {
     return (
@@ -181,6 +207,7 @@ function DesktopEntryList({
             <TableHead>시간</TableHead>
             <TableHead>내용</TableHead>
             <TableHead>상태</TableHead>
+            <TableHead className="w-[4.5rem]">작업</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -204,6 +231,9 @@ function DesktopEntryList({
               <TableCell>
                 <EntryStatusBadge entry={entry} onViewReject={() => onViewReject(entry)} />
               </TableCell>
+              <TableCell>
+                <EntryActions entry={entry} onEdit={onEdit} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -212,7 +242,7 @@ function DesktopEntryList({
   );
 }
 
-export default function TimesheetGrid({ entries, viewMode }: TimesheetGridProps) {
+export default function TimesheetGrid({ entries, viewMode, onEdit }: TimesheetGridProps) {
   const isMobileAuto = useIsMobile();
   const showMobile =
     viewMode === 'mobile' || (viewMode === 'auto' && isMobileAuto);
@@ -227,9 +257,9 @@ export default function TimesheetGrid({ entries, viewMode }: TimesheetGridProps)
         onClose={() => setViewRejectEntry(null)}
       />
       {showMobile ? (
-        <MobileCardStack entries={entries} onViewReject={setViewRejectEntry} />
+        <MobileCardStack entries={entries} onViewReject={setViewRejectEntry} onEdit={onEdit} />
       ) : (
-        <DesktopEntryList entries={entries} onViewReject={setViewRejectEntry} />
+        <DesktopEntryList entries={entries} onViewReject={setViewRejectEntry} onEdit={onEdit} />
       )}
     </>
   );

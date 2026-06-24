@@ -22,6 +22,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatMoney, type ExpenseCurrency } from '@/lib/currency';
+import { getExpenseFilingPeriodLabel, type ExpenseFilingPeriod } from '@/lib/expense-filing-periods';
+import {
+  getExpensePaymentMethodLabel,
+  type ExpensePaymentMethod,
+} from '@/lib/expense-payment-methods';
+import { getExpensePurposeLabel, type ExpensePurpose } from '@/lib/expense-purposes';
 
 interface TimeLog {
   _id: string;
@@ -44,10 +50,14 @@ interface Expense {
   expenseType: 'Core' | 'Overhead';
   clientId?: string;
   projectId?: string;
+  paymentMethod?: ExpensePaymentMethod;
+  expensePurpose?: ExpensePurpose;
+  filingPeriod?: ExpenseFilingPeriod;
   amount: number;
   currency: ExpenseCurrency;
   date: string;
   description: string;
+  notes?: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   receiptUrl?: string;
 }
@@ -81,6 +91,20 @@ function formatDate(dateStr: string) {
 
 function formatExpenseAmount(amount: number, currency: ExpenseCurrency) {
   return formatMoney(amount, currency);
+}
+
+function expenseClassificationLabel(expense: Expense) {
+  const parts: string[] = [];
+  if (expense.paymentMethod) {
+    parts.push(getExpensePaymentMethodLabel(expense.paymentMethod));
+  }
+  if (expense.expensePurpose) {
+    parts.push(getExpensePurposeLabel(expense.expensePurpose));
+  }
+  if (expense.filingPeriod) {
+    parts.push(getExpenseFilingPeriodLabel(expense.filingPeriod));
+  }
+  return parts.length > 0 ? parts.join(' · ') : '—';
 }
 
 function authorLabel(item: { userName?: string; userId: string }) {
@@ -420,6 +444,9 @@ export default function ApprovalsPage() {
                         <DataRecordRow label="유형">
                           {expenseTypeLabel[expense.expenseType]}
                         </DataRecordRow>
+                        <DataRecordRow label="지출 분류">
+                          {expenseClassificationLabel(expense)}
+                        </DataRecordRow>
                         <DataRecordRow label="프로젝트">
                           {expenseProjectLabel(expense)}
                         </DataRecordRow>
@@ -427,6 +454,9 @@ export default function ApprovalsPage() {
                           {formatExpenseAmount(expense.amount, expense.currency ?? 'KRW')}
                         </DataRecordRow>
                         <DataRecordRow label="설명">{expense.description}</DataRecordRow>
+                        {expense.notes ? (
+                          <DataRecordRow label="비고">{expense.notes}</DataRecordRow>
+                        ) : null}
                         {expense.receiptUrl ? (
                           <DataRecordRow label="영수증">
                             <a
@@ -470,6 +500,7 @@ export default function ApprovalsPage() {
                       <TableHead>지출일</TableHead>
                       <TableHead>작성자</TableHead>
                       <TableHead>유형</TableHead>
+                      <TableHead>지출 분류</TableHead>
                       <TableHead>프로젝트</TableHead>
                       <TableHead>금액</TableHead>
                       <TableHead>설명</TableHead>
@@ -487,6 +518,9 @@ export default function ApprovalsPage() {
                           <TableCell>{formatDate(expense.date)}</TableCell>
                           <TableCell>{authorLabel(expense)}</TableCell>
                           <TableCell>{expenseTypeLabel[expense.expenseType]}</TableCell>
+                          <TableCell className="max-w-[14rem] text-sm">
+                            {expenseClassificationLabel(expense)}
+                          </TableCell>
                           <TableCell>{expenseProjectLabel(expense)}</TableCell>
                           <TableCell>
                             {formatExpenseAmount(expense.amount, expense.currency ?? 'KRW')}

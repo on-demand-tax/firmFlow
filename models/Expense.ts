@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+import type { ExpenseFilingPeriod } from '@/lib/expense-filing-periods';
+import { EXPENSE_FILING_PERIODS } from '@/lib/expense-filing-periods';
+import type { ExpensePaymentMethod } from '@/lib/expense-payment-methods';
+import { EXPENSE_PAYMENT_METHODS } from '@/lib/expense-payment-methods';
+import type { ExpensePurpose } from '@/lib/expense-purposes';
+import { EXPENSE_PURPOSES } from '@/lib/expense-purposes';
+
 export type ExpenseCurrency = 'KRW' | 'USD';
 
 export interface IExpense extends Document {
@@ -7,12 +14,16 @@ export interface IExpense extends Document {
   clientId?: mongoose.Types.ObjectId | null;
   projectId?: mongoose.Types.ObjectId | null;
   expenseType: 'Core' | 'Overhead';
+  paymentMethod: ExpensePaymentMethod;
+  expensePurpose: ExpensePurpose;
+  filingPeriod?: ExpenseFilingPeriod | null;
   amount: number;
   currency: ExpenseCurrency;
   date: Date;
   receiptUrl?: string;
   googleDriveFileId?: string;
   description: string;
+  notes?: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   lockedAt?: Date;
   approvedBy?: mongoose.Types.ObjectId;
@@ -29,6 +40,23 @@ const ExpenseSchema = new Schema<IExpense>({
     required: true,
     index: true,
   },
+  paymentMethod: {
+    type: String,
+    enum: EXPENSE_PAYMENT_METHODS,
+    required: true,
+    index: true,
+  },
+  expensePurpose: {
+    type: String,
+    enum: EXPENSE_PURPOSES,
+    required: true,
+    index: true,
+  },
+  filingPeriod: {
+    type: String,
+    enum: EXPENSE_FILING_PERIODS.map((period) => period.id),
+    default: null,
+  },
   amount: { type: Number, required: true, min: 0 },
   currency: {
     type: String,
@@ -40,6 +68,7 @@ const ExpenseSchema = new Schema<IExpense>({
   receiptUrl: { type: String },
   googleDriveFileId: { type: String },
   description: { type: String, required: true },
+  notes: { type: String },
   status: {
     type: String,
     enum: ['Pending', 'Approved', 'Rejected'],

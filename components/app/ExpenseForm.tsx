@@ -7,6 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ReceiptAttachment } from '@/components/app/ReceiptAttachment';
 import { EXPENSE_CURRENCIES, formatAmountInput, parseAmountInput, type ExpenseCurrency } from '@/lib/currency';
+import { EXPENSE_FILING_PERIODS } from '@/lib/expense-filing-periods';
+import {
+  EXPENSE_PAYMENT_METHOD_GROUPS,
+  formatPaymentMethodOptionLabel,
+  isNonVoucherPaymentMethod,
+  type ExpensePaymentMethod,
+} from '@/lib/expense-payment-methods';
+import {
+  EXPENSE_PURPOSE_GROUPS,
+  formatPurposeOptionLabel,
+  type ExpensePurpose,
+} from '@/lib/expense-purposes';
+import type { ExpenseFilingPeriod } from '@/lib/expense-filing-periods';
 
 export interface ClientOption {
   value: string;
@@ -25,16 +38,26 @@ export interface ExpenseFormValues {
   expenseType: 'Core' | 'Overhead';
   clientId?: string;
   projectId?: string;
+  paymentMethod: ExpensePaymentMethod;
+  expensePurpose: ExpensePurpose;
+  filingPeriod?: ExpenseFilingPeriod;
   amount: number;
   currency: ExpenseCurrency;
   date: string;
   description: string;
+  notes?: string;
   receiptFile?: File | null;
 }
 
 export function validateExpenseForm(values: ExpenseFormValues): string | null {
   if (!values.date || !values.description.trim()) {
     return '필수 항목을 입력해 주세요';
+  }
+  if (!values.paymentMethod) {
+    return '지출 방법을 선택해 주세요';
+  }
+  if (!values.expensePurpose) {
+    return '지출 용도를 선택해 주세요';
   }
   if (values.amount < 0 || Number.isNaN(values.amount)) {
     return '금액은 0 이상이어야 합니다';
@@ -45,46 +68,98 @@ export function validateExpenseForm(values: ExpenseFormValues): string | null {
   return null;
 }
 
+export interface ExpenseFormInitialValues {
+  expenseType: 'Core' | 'Overhead';
+  clientId?: string;
+  projectId?: string;
+  paymentMethod: ExpensePaymentMethod;
+  expensePurpose: ExpensePurpose;
+  filingPeriod?: ExpenseFilingPeriod;
+  amount: number;
+  currency: ExpenseCurrency;
+  date: string;
+  description: string;
+  notes?: string;
+}
+
 interface ExpenseFormProps {
   clients: ClientOption[];
   projects: ProjectOption[];
   onSubmit: (values: ExpenseFormValues) => Promise<void>;
   submitting?: boolean;
+  editingId?: string | null;
+  initialValues?: ExpenseFormInitialValues | null;
+  existingReceiptUrl?: string | null;
+  onCancelEdit?: () => void;
 }
 
 const emptyForm: {
   expenseType: 'Core' | 'Overhead';
   clientId: string;
   projectId: string;
+  paymentMethod: string;
+  expensePurpose: string;
+  filingPeriod: string;
   amount: string;
   currency: ExpenseCurrency;
   date: string;
   description: string;
+  notes: string;
   receiptFile: File | null;
 } = {
   expenseType: 'Core',
   clientId: '',
   projectId: '',
+  paymentMethod: '',
+  expensePurpose: '',
+  filingPeriod: '',
   amount: '',
   currency: 'KRW',
   date: '',
   description: '',
+  notes: '',
   receiptFile: null,
 };
+
+function buildFormState(initialValues?: ExpenseFormInitialValues | null) {
+  if (!initialValues) return emptyForm;
+  return {
+    expenseType: initialValues.expenseType,
+    clientId: initialValues.clientId ?? '',
+    projectId: initialValues.projectId ?? '',
+    paymentMethod: initialValues.paymentMethod,
+    expensePurpose: initialValues.expensePurpose,
+    filingPeriod: initialValues.filingPeriod ?? '',
+    amount: formatAmountInput(String(initialValues.amount), initialValues.currency),
+    currency: initialValues.currency,
+    date: initialValues.date,
+    description: initialValues.description,
+    notes: initialValues.notes ?? '',
+    receiptFile: null,
+  };
+}
 
 export function ExpenseForm({
   clients,
   projects,
   onSubmit,
   submitting = false,
+  editingId = null,
+  initialValues = null,
+  existingReceiptUrl = null,
+  onCancelEdit,
 }: ExpenseFormProps) {
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => buildFormState(initialValues));
   const [error, setError] = useState('');
 
   const filteredProjects = useMemo(
     () => projects.filter((p) => p.clientId === form.clientId),
     [projects, form.clientId],
   );
+
+  const showAttributionHint =
+    form.paymentMethod !== '' &&
+    isNonVoucherPaymentMethod(form.paymentMethod as ExpensePaymentMethod);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -100,10 +175,16 @@ export function ExpenseForm({
       expenseType: form.expenseType,
       clientId: form.expenseType === 'Core' ? form.clientId : undefined,
       projectId: form.expenseType === 'Core' ? form.projectId : undefined,
+      paymentMethod: form.paymentMethod as ExpensePaymentMethod,
+      expensePurpose: form.expensePurpose as ExpensePurpose,
+      filingPeriod: form.filingPeriod
+        ? (form.filingPeriod as ExpenseFilingPeriod)
+        : undefined,
       amount,
       currency: form.currency,
       date: form.date,
       description: form.description,
+      notes: form.notes.trim() || undefined,
       receiptFile: form.receiptFile,
     };
 
@@ -114,7 +195,9 @@ export function ExpenseForm({
     }
 
     await onSubmit(values);
-    setForm(emptyForm);
+    if (!editingId) {
+      setForm(emptyForm);
+    }
   }
 
   return (
@@ -147,6 +230,71 @@ export function ExpenseForm({
           onChange={(e) => setForm({ ...form, date: e.target.value })}
           required
         />
+      </div>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="paymentMethod">지출 방법</Label>
+        <select
+          id="paymentMethod"
+          className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          value={form.paymentMethod}
+          onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+          required
+        >
+          <option value="">선택</option>
+          {EXPENSE_PAYMENT_METHOD_GROUPS.map((group) => (
+            <optgroup key={group.id} label={group.label}>
+              {group.methods.map((method) => (
+                <option key={method.id} value={method.id}>
+                  {formatPaymentMethodOptionLabel(method)}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          지출 수단은 부가세 공제 여부 판단 및 증빙 매칭의 기준이 됩니다.
+        </p>
+      </div>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="expensePurpose">지출 용도</Label>
+        <select
+          id="expensePurpose"
+          className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          value={form.expensePurpose}
+          onChange={(e) => setForm({ ...form, expensePurpose: e.target.value })}
+          required
+        >
+          <option value="">선택</option>
+          {EXPENSE_PURPOSE_GROUPS.map((group) => (
+            <optgroup key={group.id} label={group.label}>
+              {group.purposes.map((purpose) => (
+                <option key={purpose.id} value={purpose.id}>
+                  {formatPurposeOptionLabel(purpose)}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="filingPeriod">관련 신고 기간 (선택)</Label>
+        <select
+          id="filingPeriod"
+          className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          value={form.filingPeriod}
+          onChange={(e) => setForm({ ...form, filingPeriod: e.target.value })}
+        >
+          <option value="">해당 없음</option>
+          {EXPENSE_FILING_PERIODS.map((period) => (
+            <option key={period.id} value={period.id}>
+              {period.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          신고 기간(법인세·종소세·부가세 등)에 집중되는 지출은 태그를 선택하면 시즌별 원가 분석에
+          도움이 됩니다.
+        </p>
       </div>
       {form.expenseType === 'Core' && (
         <>
@@ -240,18 +388,55 @@ export function ExpenseForm({
           required
         />
       </div>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor="notes">비고 (선택)</Label>
+        <Input
+          id="notes"
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          placeholder={
+            showAttributionHint
+              ? '예: 수임업체명: (주)○○ / 목적: 대표자 자녀 결혼'
+              : '수임업체명·지출 목적 등 추가 소명 정보'
+          }
+        />
+        {showAttributionHint && (
+          <p className="text-xs text-muted-foreground">
+            비증빙 지출은 수임업체명과 목적을 비고에 기재해 주세요. 소득세 비용 소명에 유리합니다.
+          </p>
+        )}
+      </div>
       <div className="sm:col-span-2">
         <ReceiptAttachment
           value={form.receiptFile}
           onChange={(receiptFile) => setForm({ ...form, receiptFile })}
           disabled={submitting}
         />
+        {editingId && existingReceiptUrl && !form.receiptFile && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            등록된 영수증:{' '}
+            <a
+              href={existingReceiptUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline"
+            >
+              보기
+            </a>
+            {' '}(새 파일을 선택하면 교체됩니다)
+          </p>
+        )}
       </div>
       {error && <p className="text-sm text-destructive sm:col-span-2">{error}</p>}
-      <div className="sm:col-span-2">
+      <div className="flex flex-wrap gap-2 sm:col-span-2">
         <Button type="submit" disabled={submitting}>
-          {submitting ? '저장 중...' : '등록'}
+          {submitting ? '저장 중...' : editingId ? '수정' : '등록'}
         </Button>
+        {editingId && onCancelEdit && (
+          <Button type="button" variant="outline" disabled={submitting} onClick={onCancelEdit}>
+            취소
+          </Button>
+        )}
       </div>
     </form>
   );

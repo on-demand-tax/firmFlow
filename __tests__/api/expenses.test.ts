@@ -19,6 +19,10 @@ import {
   DELETE as deleteExpense,
 } from '@/app/api/expenses/[id]/route';
 import { PATCH as patchExpenseStatus } from '@/app/api/expenses/[id]/status/route';
+import {
+  expenseClassificationFixture,
+  overheadClassificationFixture,
+} from '@/__tests__/helpers/expense-fixtures';
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<
   typeof getServerSession
@@ -67,6 +71,8 @@ function coreBody(overrides: Record<string, unknown> = {}) {
     expenseType: 'Core',
     clientId: clientId.toString(),
     projectId: projectId.toString(),
+    paymentMethod: 'BizCreditCardRegistered',
+    expensePurpose: 'TravelTransport',
     amount: 50000,
     date: '2026-06-20',
     description: 'Travel expense',
@@ -77,12 +83,16 @@ function coreBody(overrides: Record<string, unknown> = {}) {
 function overheadBody(overrides: Record<string, unknown> = {}) {
   return {
     expenseType: 'Overhead',
+    paymentMethod: 'ETaxInvoiceEmail',
+    expensePurpose: 'OfficeSupplies',
     amount: 12000,
     date: '2026-06-20',
     description: 'Office supplies',
     ...overrides,
   };
 }
+
+const testExpenseDefaults = expenseClassificationFixture;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -217,6 +227,18 @@ describe('POST /api/expenses', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when payment method is missing', async () => {
+    mockSession('Preparer');
+    const res = await createExpense(
+      makeRequest(
+        'POST',
+        'http://localhost/api/expenses',
+        coreBody({ paymentMethod: undefined }),
+      ),
+    );
+    expect(res.status).toBe(400);
+  });
+
   it('returns 403 for OnLeave user', async () => {
     mockSession('Preparer', { status: 'OnLeave' });
     const res = await createExpense(
@@ -233,6 +255,7 @@ describe('GET /api/expenses', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...testExpenseDefaults,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Own expense',
@@ -240,6 +263,7 @@ describe('GET /api/expenses', () => {
     await ExpenseModel.create({
       userId: otherPreparerId,
       expenseType: 'Overhead',
+      ...overheadClassificationFixture,
       amount: 5000,
       date: new Date('2026-06-21'),
       description: 'Other expense',
@@ -271,6 +295,7 @@ describe('PATCH /api/expenses/[id]', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...testExpenseDefaults,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Work',
@@ -289,6 +314,7 @@ describe('PATCH /api/expenses/[id]', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...testExpenseDefaults,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Work',
@@ -310,6 +336,7 @@ describe('DELETE /api/expenses/[id]', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...testExpenseDefaults,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Work',
@@ -331,6 +358,7 @@ describe('PATCH /api/expenses/[id]/status', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...testExpenseDefaults,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Work',
@@ -355,6 +383,7 @@ describe('PATCH /api/expenses/[id]/status', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...testExpenseDefaults,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Work',
@@ -379,6 +408,7 @@ describe('PATCH /api/expenses/[id]/status', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...testExpenseDefaults,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Work',
@@ -400,6 +430,7 @@ describe('PATCH /api/expenses/[id]/status', () => {
       clientId,
       projectId,
       expenseType: 'Core',
+      ...testExpenseDefaults,
       amount: 10000,
       date: new Date('2026-06-20'),
       description: 'Work',

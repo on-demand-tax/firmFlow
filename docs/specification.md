@@ -479,12 +479,16 @@ Phase 2에서 `projectType` / `workSubtype` / `billingModel` 기준 **청구 예
 | `clientId` | ObjectId | Client 참조 (선택) |
 | `projectId` | ObjectId | Project 참조 (선택) |
 | `expenseType` | Enum | `Core` (프로젝트 직접) \| `Overhead` (간접) |
+| `paymentMethod` | Enum | 지출 방법 — `lib/expense-payment-methods.ts` (적격/비증빙/기타) |
+| `expensePurpose` | Enum | 지출 용도 — `lib/expense-purposes.ts` (A~F 회계·세무 사무소 분류) |
+| `filingPeriod` | Enum | 관련 신고 기간 (선택) — `lib/expense-filing-periods.ts` |
 | `amount` | Number | 금액 (≥ 0) |
 | `currency` | Enum | `KRW` \| `USD` (기본: `KRW`) — 대시보드 KRW/USD 분리 집계 |
 | `date` | Date | 지출일 |
 | `receiptUrl` | String | 영수증 URL (선택) |
 | `googleDriveFileId` | String | Drive 파일 ID (선택) |
 | `description` | String | 설명 |
+| `notes` | String | 비고 (선택) — 비증빙 지출 시 수임업체명·목적 소명 |
 | `status` | Enum | `Pending` \| `Approved` \| `Rejected` (기본: `Pending`) |
 | `approvedBy` | ObjectId | 승인자 (선택) |
 | `rejectionReason` | String | 반려 사유 (선택) |

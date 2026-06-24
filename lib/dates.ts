@@ -75,3 +75,8 @@ export function getWeekDateKeysSeoul(anchorDate: Date): string[] {
 export function addDaysSeoul(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
+
+/** `<input type="date">` 값 — 서울 기준 YYYY-MM-DD */
+export function toDateInputValue(dateInput: string | Date): string {
+  return getSeoulDateKey(new Date(dateInput));
+}

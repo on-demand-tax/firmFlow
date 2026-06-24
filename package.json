@@ -1,6 +1,6 @@
 {
   "name": "firmflow",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "prepare": "git config core.hooksPath .githooks",
+    "changelog:update": "tsx scripts/update-changelog.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -42,6 +44,7 @@
     "node-mocks-http": "^1.17.2",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.11",
+    "tsx": "^4.20.3",
     "typescript": "^5"
   }
 }

@@ -52,10 +52,22 @@ export function validateTimesheetForm(
   return null;
 }
 
+export interface TimesheetFormInitialValues {
+  date: string;
+  projectId: string;
+  activity?: string;
+  hours: number;
+  description: string;
+  entryMode?: TimesheetEntryMode;
+}
+
 interface TimesheetFormProps {
   projects: ProjectOption[];
   onSubmit: (values: TimesheetFormValues) => Promise<void>;
   submitting?: boolean;
+  editingId?: string | null;
+  initialValues?: TimesheetFormInitialValues | null;
+  onCancelEdit?: () => void;
 }
 
 const emptyForm = {
@@ -66,7 +78,25 @@ const emptyForm = {
   description: '',
 };
 
-export function TimesheetForm({ projects, onSubmit, submitting = false }: TimesheetFormProps) {
+function buildFormState(initialValues?: TimesheetFormInitialValues | null) {
+  if (!initialValues) return emptyForm;
+  return {
+    date: initialValues.date,
+    projectId: initialValues.projectId,
+    activity: initialValues.activity ?? '',
+    hours: String(initialValues.hours),
+    description: initialValues.description,
+  };
+}
+
+export function TimesheetForm({
+  projects,
+  onSubmit,
+  submitting = false,
+  editingId = null,
+  initialValues = null,
+  onCancelEdit,
+}: TimesheetFormProps) {
   const nonBillableProject = useMemo(
     () => projects.find((project) => project.isNonBillable),
     [projects],
@@ -76,8 +106,10 @@ export function TimesheetForm({ projects, onSubmit, submitting = false }: Timesh
     [projects],
   );
 
-  const [entryMode, setEntryMode] = useState<TimesheetEntryMode>('client');
-  const [form, setForm] = useState(emptyForm);
+  const [entryMode, setEntryMode] = useState<TimesheetEntryMode>(
+    initialValues?.entryMode ?? 'client',
+  );
+  const [form, setForm] = useState(() => buildFormState(initialValues));
   const [error, setError] = useState('');
 
   const visibleProjects = entryMode === 'nonBillable' && nonBillableProject
@@ -133,6 +165,8 @@ export function TimesheetForm({ projects, onSubmit, submitting = false }: Timesh
     }
 
     await onSubmit(values);
+    if (editingId) return;
+
     if (entryMode === 'nonBillable' && nonBillableProject) {
       setForm({
         ...emptyForm,
@@ -253,10 +287,15 @@ export function TimesheetForm({ projects, onSubmit, submitting = false }: Timesh
         />
       </div>
       {error && <p className="text-sm text-destructive sm:col-span-2">{error}</p>}
-      <div className="sm:col-span-2">
+      <div className="flex flex-wrap gap-2 sm:col-span-2">
         <Button type="submit" disabled={submitting}>
-          {submitting ? '저장 중...' : '등록'}
+          {submitting ? '저장 중...' : editingId ? '수정' : '등록'}
         </Button>
+        {editingId && onCancelEdit && (
+          <Button type="button" variant="outline" disabled={submitting} onClick={onCancelEdit}>
+            취소
+          </Button>
+        )}
       </div>
     </form>
   );
