@@ -3,7 +3,7 @@ import { getNavItemsForRole } from '@/lib/nav-items';
 describe('getNavItemsForRole', () => {
   it('Preparer sees dashboard, timesheet, expenses only', () => {
     const hrefs = getNavItemsForRole('Preparer').map((i) => i.href);
-    expect(hrefs).toEqual(['/app', '/app/timesheet', '/app/expenses']);
+    expect(hrefs).toEqual(['/app', '/app/timesheet', '/app/expenses', '/app/about']);
   });
   it('Approver adds approvals, clients, projects', () => {
     const hrefs = getNavItemsForRole('Approver').map((i) => i.href);

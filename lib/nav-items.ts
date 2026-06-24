@@ -23,13 +23,15 @@ const ADMIN_ITEMS: NavItem[] = [
   { href: '/app/admin/salary', label: '급여 단가' },
 ];
 
+const COMMON_ITEMS: NavItem[] = [{ href: '/app/about', label: '정보' }];
+
 export function getNavItemsForRole(role: UserRole): NavItem[] {
   switch (role) {
     case 'Admin':
-      return [...PREPARER_ITEMS, ...APPROVER_ITEMS, ...ADMIN_ITEMS];
+      return [...PREPARER_ITEMS, ...APPROVER_ITEMS, ...ADMIN_ITEMS, ...COMMON_ITEMS];
     case 'Approver':
-      return [...PREPARER_ITEMS, ...APPROVER_ITEMS];
+      return [...PREPARER_ITEMS, ...APPROVER_ITEMS, ...COMMON_ITEMS];
     case 'Preparer':
-      return [...PREPARER_ITEMS];
+      return [...PREPARER_ITEMS, ...COMMON_ITEMS];
   }
 }
