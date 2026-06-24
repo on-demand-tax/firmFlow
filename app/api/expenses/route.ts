@@ -8,7 +8,9 @@ import { ExpenseModel } from '@/models/Expense';
 import {
   isValidAmount,
   parseExpenseDate,
+  parseExpenseCurrency,
   serializeExpense,
+  serializeExpensesWithUsers,
   validateProjectBelongsToClient,
 } from '@/lib/expense-helpers';
 
@@ -24,7 +26,7 @@ export async function GET() {
       : {};
 
   const expenses = await ExpenseModel.find(filter).sort({ date: -1, createdAt: -1 });
-  return NextResponse.json(expenses.map(serializeExpense));
+  return NextResponse.json(await serializeExpensesWithUsers(expenses));
 }
 
 export async function POST(request: Request) {
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { expenseType, clientId, projectId, amount, date, description } = body;
+  const { expenseType, clientId, projectId, amount, currency, date, description } = body;
 
   if (!expenseType || amount === undefined || !date || !description) {
     return jsonError('필수 항목을 입력해 주세요', 400);
@@ -48,6 +50,11 @@ export async function POST(request: Request) {
 
   if (!isValidAmount(amount)) {
     return jsonError('금액은 0 이상이어야 합니다', 400);
+  }
+
+  const parsedCurrency = parseExpenseCurrency(currency);
+  if (!parsedCurrency) {
+    return jsonError('통화는 KRW 또는 USD만 선택할 수 있습니다', 400);
   }
 
   const parsedDate = parseExpenseDate(date);
@@ -81,6 +88,7 @@ export async function POST(request: Request) {
     projectId: expenseType === 'Core' ? projectId : null,
     expenseType,
     amount,
+    currency: parsedCurrency,
     date: parsedDate,
     description: String(description).trim(),
     status: 'Pending',

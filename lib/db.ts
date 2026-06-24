@@ -1,4 +1,25 @@
+import dns from 'node:dns';
 import mongoose from 'mongoose';
+
+function ensureMongoSrvDns(): void {
+  if (!process.env.MONGODB_URI?.startsWith('mongodb+srv://')) return;
+
+  const custom = process.env.MONGODB_DNS_SERVERS?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (custom?.length) {
+    dns.setServers(custom);
+    return;
+  }
+
+  // Some Windows/ISP DNS resolvers refuse SRV queries (querySrv ECONNREFUSED).
+  if (process.env.NODE_ENV !== 'production') {
+    dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+  }
+}
+
+// Apply before any route handler resolves mongodb+srv (avoids first-request race).
+ensureMongoSrvDns();
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -29,6 +50,7 @@ async function dbConnect(): Promise<typeof mongoose> {
   }
 
   if (!cached.promise) {
+    ensureMongoSrvDns();
     cached.promise = mongoose.connect(mongodbUri, { bufferCommands: false });
   }
 

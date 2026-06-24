@@ -168,6 +168,25 @@ describe('POST /api/expenses', () => {
     expect(data.expenseType).toBe('Core');
     expect(data.clientId).toBe(clientId.toString());
     expect(data.projectId).toBe(projectId.toString());
+    expect(data.currency).toBe('KRW');
+  });
+
+  it('creates expense with USD currency', async () => {
+    mockSession('Preparer');
+    const res = await createExpense(
+      makeRequest('POST', 'http://localhost/api/expenses', coreBody({ currency: 'USD' })),
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.currency).toBe('USD');
+  });
+
+  it('returns 400 for invalid currency', async () => {
+    mockSession('Preparer');
+    const res = await createExpense(
+      makeRequest('POST', 'http://localhost/api/expenses', coreBody({ currency: 'EUR' })),
+    );
+    expect(res.status).toBe(400);
   });
 
   it('creates Overhead expense without client or project', async () => {
@@ -328,6 +347,51 @@ describe('PATCH /api/expenses/[id]/status', () => {
     const data = await res.json();
     expect(data.status).toBe('Approved');
     expect(data.approvedBy).toBe(approverId.toString());
+  });
+
+  it('rejects expense with reason', async () => {
+    const expense = await ExpenseModel.create({
+      userId: preparerId,
+      clientId,
+      projectId,
+      expenseType: 'Core',
+      amount: 10000,
+      date: new Date('2026-06-20'),
+      description: 'Work',
+      status: 'Pending',
+    });
+    mockSession('Approver', { userId: approverId });
+    const res = await patchExpenseStatus(
+      makeRequest('PATCH', `http://localhost/api/expenses/${expense._id}/status`, {
+        status: 'Rejected',
+        rejectionReason: '영수증 불명확',
+      }),
+      { params: Promise.resolve({ id: expense._id.toString() }) },
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.rejectionReason).toBe('영수증 불명확');
+  });
+
+  it('returns 400 when rejecting without reason', async () => {
+    const expense = await ExpenseModel.create({
+      userId: preparerId,
+      clientId,
+      projectId,
+      expenseType: 'Core',
+      amount: 10000,
+      date: new Date('2026-06-20'),
+      description: 'Work',
+      status: 'Pending',
+    });
+    mockSession('Approver', { userId: approverId });
+    const res = await patchExpenseStatus(
+      makeRequest('PATCH', `http://localhost/api/expenses/${expense._id}/status`, {
+        status: 'Rejected',
+      }),
+      { params: Promise.resolve({ id: expense._id.toString() }) },
+    );
+    expect(res.status).toBe(400);
   });
 
   it('returns 403 for Preparer', async () => {

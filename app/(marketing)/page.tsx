@@ -16,10 +16,15 @@ export default function HomePage() {
           소규모 회계법인을 위한 경량·고효율 업무 플랫폼입니다.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Button render={<Link href="/login" />} size="lg">
+          <Button nativeButton={false} render={<Link href="/login" />} size="lg">
             내부 시스템 로그인
           </Button>
-          <Button render={<Link href="/about" />} variant="outline" size="lg">
+          <Button
+            nativeButton={false}
+            render={<Link href="/about" />}
+            variant="outline"
+            size="lg"
+          >
             FirmFlow 소개
           </Button>
         </div>

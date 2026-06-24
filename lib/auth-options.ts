@@ -28,6 +28,12 @@ export function getAuthOptions(): NextAuthOptions {
       GoogleProvider({
         clientId: env.googleClientId,
         clientSecret: env.googleClientSecret,
+        authorization: {
+          params: {
+            // Workspace 계정 선택 유도 (보안은 signIn 콜백의 도메인 검증이 담당)
+            hd: env.allowedEmailDomain,
+          },
+        },
       }),
     ],
     callbacks: {

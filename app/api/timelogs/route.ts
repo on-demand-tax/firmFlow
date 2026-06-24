@@ -5,10 +5,11 @@ import { requireSession } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
 import { isReadOnlyOnLeave } from '@/lib/permissions';
 import { TimeLogModel } from '@/models/TimeLog';
+import { isValidHours, TIMELOG_HOURS_RANGE_MESSAGE } from '@/lib/timelog-hours';
 import {
-  isValidHours,
   parseTimeLogDate,
-  serializeTimeLog,
+  resolveTimeLogContent,
+  serializeTimeLogsWithProjects,
   validateDailyHours,
 } from '@/lib/timelog-helpers';
 
@@ -24,7 +25,7 @@ export async function GET() {
       : {};
 
   const logs = await TimeLogModel.find(filter).sort({ date: -1, createdAt: -1 });
-  return NextResponse.json(logs.map(serializeTimeLog));
+  return NextResponse.json(await serializeTimeLogsWithProjects(logs));
 }
 
 export async function POST(request: Request) {
@@ -36,14 +37,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { clientId, projectId, date, hours, description } = body;
+  const { clientId, projectId, date, hours, description, activity } = body;
 
-  if (!clientId || !projectId || !date || hours === undefined || !description) {
+  if (!clientId || !projectId || !date || hours === undefined) {
     return jsonError('필수 항목을 입력해 주세요', 400);
   }
 
   if (!isValidHours(hours)) {
-    return jsonError('시간은 0.5~24 사이여야 합니다', 400);
+    return jsonError(TIMELOG_HOURS_RANGE_MESSAGE, 400);
   }
 
   const parsedDate = parseTimeLogDate(date);
@@ -56,6 +57,11 @@ export async function POST(request: Request) {
   }
 
   await dbConnect();
+
+  const content = await resolveTimeLogContent({ projectId, description, activity });
+  if (!content.ok) {
+    return jsonError(content.error, content.status);
+  }
 
   const withinDailyLimit = await validateDailyHours(
     auth.session.user.userId,
@@ -72,9 +78,11 @@ export async function POST(request: Request) {
     projectId,
     date: parsedDate,
     hours,
-    description: String(description).trim(),
+    activity: content.activity,
+    description: content.description,
     status: 'Pending',
   });
 
-  return NextResponse.json(serializeTimeLog(log), { status: 201 });
+  const [serialized] = await serializeTimeLogsWithProjects([log]);
+  return NextResponse.json(serialized, { status: 201 });
 }

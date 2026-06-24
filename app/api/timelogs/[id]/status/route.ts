@@ -3,8 +3,9 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
+import { parseApprovalStatusPayload } from '@/lib/approval-helpers';
 import { TimeLogModel } from '@/models/TimeLog';
-import { serializeTimeLog } from '@/lib/timelog-helpers';
+import { serializeTimeLogsWithProjects } from '@/lib/timelog-helpers';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,10 +19,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const body = await request.json();
-  const { status } = body;
-
-  if (status !== 'Approved' && status !== 'Rejected') {
-    return jsonError('승인 상태가 올바르지 않습니다', 400);
+  const parsed = parseApprovalStatusPayload(body);
+  if (!parsed.ok) {
+    return jsonError(parsed.error, parsed.status);
   }
 
   await dbConnect();
@@ -34,9 +34,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     return jsonError('마감된 타임로그는 상태를 변경할 수 없습니다', 403);
   }
 
-  log.status = status;
+  log.status = parsed.status;
   log.approvedBy = new mongoose.Types.ObjectId(auth.session.user.userId);
+  if (parsed.status === 'Rejected') {
+    log.rejectionReason = parsed.rejectionReason;
+  } else {
+    log.set('rejectionReason', undefined, { strict: false });
+  }
   await log.save();
 
-  return NextResponse.json(serializeTimeLog(log));
+  const [serialized] = await serializeTimeLogsWithProjects([log]);
+  return NextResponse.json(serialized);
 }

@@ -1,11 +1,14 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type ExpenseCurrency = 'KRW' | 'USD';
+
 export interface IExpense extends Document {
   userId: mongoose.Types.ObjectId;
   clientId?: mongoose.Types.ObjectId | null;
   projectId?: mongoose.Types.ObjectId | null;
   expenseType: 'Core' | 'Overhead';
   amount: number;
+  currency: ExpenseCurrency;
   date: Date;
   receiptUrl?: string;
   googleDriveFileId?: string;
@@ -13,6 +16,7 @@ export interface IExpense extends Document {
   status: 'Pending' | 'Approved' | 'Rejected';
   lockedAt?: Date;
   approvedBy?: mongoose.Types.ObjectId;
+  rejectionReason?: string;
 }
 
 const ExpenseSchema = new Schema<IExpense>({
@@ -26,6 +30,12 @@ const ExpenseSchema = new Schema<IExpense>({
     index: true,
   },
   amount: { type: Number, required: true, min: 0 },
+  currency: {
+    type: String,
+    enum: ['KRW', 'USD'],
+    default: 'KRW',
+    required: true,
+  },
   date: { type: Date, required: true, index: true },
   receiptUrl: { type: String },
   googleDriveFileId: { type: String },
@@ -38,7 +48,11 @@ const ExpenseSchema = new Schema<IExpense>({
   },
   lockedAt: { type: Date },
   approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  rejectionReason: { type: String },
 });
 
-export const ExpenseModel =
-  mongoose.models.Expense || mongoose.model<IExpense>('Expense', ExpenseSchema);
+if (process.env.NODE_ENV !== 'production' && mongoose.models.Expense) {
+  mongoose.deleteModel('Expense');
+}
+
+export const ExpenseModel = mongoose.model<IExpense>('Expense', ExpenseSchema);

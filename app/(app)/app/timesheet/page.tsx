@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { TimesheetForm, type ProjectOption } from '@/components/app/TimesheetForm';
+import { WeekdayHoursSummary } from '@/components/app/WeekdayHoursSummary';
 import TimesheetGrid from '@/components/TimesheetGrid';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -12,8 +13,11 @@ interface TimeLog {
   projectId: string;
   date: string;
   hours: number;
+  activity?: string;
+  activityLabel?: string;
   description: string;
   status: 'Pending' | 'Approved' | 'Rejected';
+  rejectionReason?: string;
   lockedAt?: string;
 }
 
@@ -23,6 +27,9 @@ export default function TimesheetPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'Pending' | 'Approved' | 'Rejected'
+  >('all');
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.value, p]));
 
@@ -36,12 +43,29 @@ export default function TimesheetPage() {
           clientName: project?.clientName ?? '',
           projectLabel: project?.label ?? log.projectId,
           hours: log.hours,
+          activityLabel: log.activityLabel,
           description: log.description,
           status: log.status,
+          rejectionReason: log.rejectionReason,
           lockedAt: log.lockedAt,
         };
       }),
     [logs, projectMap],
+  );
+
+  const filteredEntries = useMemo(() => {
+    if (statusFilter === 'all') return gridEntries;
+    return gridEntries.filter((entry) => entry.status === statusFilter);
+  }, [gridEntries, statusFilter]);
+
+  const rejectedCount = useMemo(
+    () => gridEntries.filter((entry) => entry.status === 'Rejected').length,
+    [gridEntries],
+  );
+
+  const hourEntries = useMemo(
+    () => logs.map((log) => ({ date: log.date, hours: log.hours, status: log.status })),
+    [logs],
   );
 
   const loadData = useCallback(async () => {
@@ -71,6 +95,7 @@ export default function TimesheetPage() {
     clientId: string;
     projectId: string;
     hours: number;
+    activity?: string;
     description: string;
   }) {
     setSubmitting(true);
@@ -110,15 +135,38 @@ export default function TimesheetPage() {
         </CardContent>
       </Card>
 
+      {!loading && <WeekdayHoursSummary entries={hourEntries} />}
+
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
           <CardTitle>내 기록</CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            {rejectedCount > 0 && (
+              <span className="text-sm text-muted-foreground">
+                반려 {rejectedCount}건
+              </span>
+            )}
+            <select
+              className="flex h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(
+                  e.target.value as 'all' | 'Pending' | 'Approved' | 'Rejected',
+                )
+              }
+            >
+              <option value="all">모든 상태</option>
+              <option value="Pending">대기</option>
+              <option value="Approved">승인</option>
+              <option value="Rejected">반려</option>
+            </select>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-muted-foreground">불러오는 중...</p>
           ) : (
-            <TimesheetGrid viewMode="auto" entries={gridEntries} />
+            <TimesheetGrid viewMode="auto" entries={filteredEntries} />
           )}
         </CardContent>
       </Card>

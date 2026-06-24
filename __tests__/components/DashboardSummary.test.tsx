@@ -7,8 +7,8 @@ describe('DashboardSummary', () => {
       <DashboardSummary
         totalHours={120}
         totalLaborCost={6000}
-        totalCoreExpense={2500}
-        totalOverhead={800}
+        totalCoreExpense={{ KRW: 2500, USD: 100 }}
+        totalOverhead={{ KRW: 800, USD: 0 }}
         pendingTimeLogCount={3}
         pendingExpenseCount={2}
       />,
@@ -17,7 +17,9 @@ describe('DashboardSummary', () => {
     expect(screen.getByTestId('pending-timelog-badge')).toHaveTextContent('3');
     expect(screen.getByTestId('pending-expense-badge')).toHaveTextContent('2');
     expect(screen.getByText('120h')).toBeInTheDocument();
-    expect(screen.getByText('6,000원')).toBeInTheDocument();
+    expect(screen.getByText('₩6,000')).toBeInTheDocument();
+    expect(screen.getByText('₩2,500 / $100.00')).toBeInTheDocument();
+    expect(screen.getByText('₩800 / $0.00')).toBeInTheDocument();
   });
 
   it('shows zero pending badges when counts are zero', () => {
@@ -25,8 +27,8 @@ describe('DashboardSummary', () => {
       <DashboardSummary
         totalHours={0}
         totalLaborCost={0}
-        totalCoreExpense={0}
-        totalOverhead={0}
+        totalCoreExpense={{ KRW: 0, USD: 0 }}
+        totalOverhead={{ KRW: 0, USD: 0 }}
         pendingTimeLogCount={0}
         pendingExpenseCount={0}
       />,

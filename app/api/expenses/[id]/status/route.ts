@@ -3,8 +3,9 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
+import { parseApprovalStatusPayload } from '@/lib/approval-helpers';
 import { ExpenseModel } from '@/models/Expense';
-import { serializeExpense } from '@/lib/expense-helpers';
+import { serializeExpensesWithUsers } from '@/lib/expense-helpers';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,10 +19,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const body = await request.json();
-  const { status } = body;
-
-  if (status !== 'Approved' && status !== 'Rejected') {
-    return jsonError('승인 상태가 올바르지 않습니다', 400);
+  const parsed = parseApprovalStatusPayload(body);
+  if (!parsed.ok) {
+    return jsonError(parsed.error, parsed.status);
   }
 
   await dbConnect();
@@ -34,9 +34,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     return jsonError('마감된 경비는 상태를 변경할 수 없습니다', 403);
   }
 
-  expense.status = status;
+  expense.status = parsed.status;
   expense.approvedBy = new mongoose.Types.ObjectId(auth.session.user.userId);
+  if (parsed.status === 'Rejected') {
+    expense.rejectionReason = parsed.rejectionReason;
+  } else {
+    expense.set('rejectionReason', undefined, { strict: false });
+  }
   await expense.save();
 
-  return NextResponse.json(serializeExpense(expense));
+  const [serialized] = await serializeExpensesWithUsers([expense]);
+  return NextResponse.json(serialized);
 }

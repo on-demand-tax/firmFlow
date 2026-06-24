@@ -260,15 +260,15 @@ describe('GET /api/dashboard', () => {
     expect(res.status).toBe(200);
     expect(data.summary.totalHours).toBe(16);
     expect(data.summary.totalLaborCost).toBe(840);
-    expect(data.summary.totalCoreExpense).toBe(1000);
-    expect(data.summary.totalOverhead).toBe(300);
+    expect(data.summary.totalCoreExpense).toEqual({ KRW: 1000, USD: 0 });
+    expect(data.summary.totalOverhead).toEqual({ KRW: 300, USD: 0 });
 
     const mainProject = data.projects.find(
       (p: { projectId: string }) => p.projectId === projectId.toString(),
     );
     expect(mainProject.hours).toBe(14);
     expect(mainProject.laborCost).toBe(740);
-    expect(mainProject.coreExpense).toBe(1000);
+    expect(mainProject.coreExpense).toEqual({ KRW: 1000, USD: 0 });
 
     const secondProject = data.projects.find(
       (p: { projectId: string }) => p.projectId === project2Id.toString(),
@@ -289,8 +289,8 @@ describe('GET /api/dashboard', () => {
     expect(data.summary.pendingTimeLogCount).toBe(1);
     expect(data.summary.pendingExpenseCount).toBe(2);
     expect(data.summary.totalHours).toBe(16);
-    expect(data.summary.totalCoreExpense).toBe(1000);
-    expect(data.summary.totalOverhead).toBe(300);
+    expect(data.summary.totalCoreExpense).toEqual({ KRW: 1000, USD: 0 });
+    expect(data.summary.totalOverhead).toEqual({ KRW: 300, USD: 0 });
   });
 
   it('returns overhead as a separate row', async () => {
@@ -302,7 +302,7 @@ describe('GET /api/dashboard', () => {
     );
     const data = await res.json();
 
-    expect(data.overhead).toEqual({ amount: 300 });
+    expect(data.overhead).toEqual({ KRW: 300, USD: 0 });
   });
 
   it('Preparer sees only own contribution subset and own pending counts', async () => {
@@ -380,5 +380,53 @@ describe('GET /api/dashboard', () => {
     expect(data.projects).toHaveLength(1);
     expect(data.projects[0].projectId).toBe(project2Id.toString());
     expect(data.summary.totalHours).toBe(2);
+  });
+
+  it('aggregates core and overhead expenses by currency', async () => {
+    const logDate = parseDateOnlySeoul(JUNE_2026)!;
+    await ExpenseModel.create([
+      {
+        userId: preparerId,
+        clientId,
+        projectId,
+        expenseType: 'Core',
+        amount: 1000,
+        currency: 'KRW',
+        date: logDate,
+        description: 'KRW core',
+        status: 'Approved',
+      },
+      {
+        userId: preparerId,
+        clientId,
+        projectId,
+        expenseType: 'Core',
+        amount: 50,
+        currency: 'USD',
+        date: logDate,
+        description: 'USD core',
+        status: 'Approved',
+      },
+      {
+        userId: preparerId,
+        expenseType: 'Overhead',
+        amount: 200,
+        currency: 'USD',
+        date: logDate,
+        description: 'USD overhead',
+        status: 'Approved',
+      },
+    ]);
+
+    mockSession('Admin');
+    const res = await getDashboard(
+      makeRequest('http://localhost/api/dashboard?year=2026&month=6'),
+    );
+    const data = await res.json();
+
+    expect(data.summary.totalCoreExpense).toEqual({ KRW: 1000, USD: 50 });
+    expect(data.summary.totalOverhead).toEqual({ KRW: 0, USD: 200 });
+    expect(data.projects[0].coreExpense).toEqual({ KRW: 1000, USD: 50 });
+    expect(data.overhead).toEqual({ KRW: 0, USD: 200 });
   });
 });

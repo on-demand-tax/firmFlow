@@ -45,3 +45,33 @@ export function getMonthRangeSeoul(
   );
   return { start, end };
 }
+
+/** Monday 00:00 Seoul for the week containing `date`. */
+export function getWeekMondaySeoul(date: Date): Date {
+  const key = getSeoulDateKey(date);
+  const dayStart = parseDateOnlySeoul(key)!;
+  const seoul = new Date(date.getTime() + SEOUL_OFFSET_MS);
+  const dayOfWeek = seoul.getUTCDay();
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  return new Date(dayStart.getTime() - daysFromMonday * 24 * 60 * 60 * 1000);
+}
+
+/** Mon–Fri date keys (YYYY-MM-DD) for the week containing `anchorDate`. */
+export function getWeekdayDateKeysSeoul(anchorDate: Date): string[] {
+  const monday = getWeekMondaySeoul(anchorDate);
+  return Array.from({ length: 5 }, (_, index) =>
+    getSeoulDateKey(new Date(monday.getTime() + index * 24 * 60 * 60 * 1000)),
+  );
+}
+
+/** Mon–Sun date keys (YYYY-MM-DD) for the week containing `anchorDate`. */
+export function getWeekDateKeysSeoul(anchorDate: Date): string[] {
+  const monday = getWeekMondaySeoul(anchorDate);
+  return Array.from({ length: 7 }, (_, index) =>
+    getSeoulDateKey(new Date(monday.getTime() + index * 24 * 60 * 60 * 1000)),
+  );
+}
+
+export function addDaysSeoul(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}

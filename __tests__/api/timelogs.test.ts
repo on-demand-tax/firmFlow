@@ -165,6 +165,74 @@ describe('POST /api/timelogs', () => {
     );
     expect(res.status).toBe(403);
   });
+
+  it('returns 400 when BookkeepingAgency project missing activity', async () => {
+    const bkProject = await ProjectModel.create({
+      clientId,
+      projectName: '기장대리',
+      projectType: 'BookkeepingAgency',
+      billingModel: 'Retainer',
+      currency: 'KRW',
+      contractAmount: 100000,
+      billingAnchorDay: 1,
+    });
+    mockSession('Preparer');
+    const res = await createTimeLog(
+      makeRequest('POST', 'http://localhost/api/timelogs', validBody({
+        projectId: bkProject._id.toString(),
+        description: '',
+      })),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('creates timelog with bookkeeping activity', async () => {
+    const bkProject = await ProjectModel.create({
+      clientId,
+      projectName: '기장대리',
+      projectType: 'BookkeepingAgency',
+      billingModel: 'Retainer',
+      currency: 'KRW',
+      contractAmount: 100000,
+      billingAnchorDay: 1,
+    });
+    mockSession('Preparer');
+    const res = await createTimeLog(
+      makeRequest('POST', 'http://localhost/api/timelogs', validBody({
+        projectId: bkProject._id.toString(),
+        activity: 'VatFiling',
+        description: '',
+      })),
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.activity).toBe('VatFiling');
+    expect(data.activityLabel).toBe('부가가치세 신고');
+    expect(data.description).toBe('부가가치세 신고');
+  });
+
+  it('creates timelog with non-billable activity', async () => {
+    const nbProject = await ProjectModel.create({
+      clientId,
+      projectName: '비청구 시간',
+      projectType: 'NonBillable',
+      billingModel: 'Manual',
+      currency: 'KRW',
+    });
+    mockSession('Preparer');
+    const res = await createTimeLog(
+      makeRequest('POST', 'http://localhost/api/timelogs', validBody({
+        projectId: nbProject._id.toString(),
+        activity: 'EDU_CPE',
+        description: '',
+      })),
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.activity).toBe('EDU_CPE');
+    expect(data.activityLabel).toBe('CPE(계속전문교육) 이수');
+    expect(data.description).toBe('CPE(계속전문교육) 이수');
+  });
 });
 
 describe('GET /api/timelogs', () => {
@@ -309,6 +377,65 @@ describe('PATCH /api/timelogs/[id]/status', () => {
     const data = await res.json();
     expect(data.status).toBe('Approved');
     expect(data.approvedBy).toBe(approverId.toString());
+  });
+
+  it('rejects timelog with reason', async () => {
+    const log = await TimeLogModel.create({
+      userId: preparerId,
+      clientId,
+      projectId,
+      date: new Date('2026-06-20'),
+      hours: 2,
+      description: 'Work',
+      status: 'Pending',
+    });
+    mockSession('Approver', { userId: approverId });
+    const res = await patchTimeLogStatus(
+      makeRequest('PATCH', `http://localhost/api/timelogs/${log._id}/status`, {
+        status: 'Rejected',
+        rejectionReason: '시간 과다',
+      }),
+      { params: Promise.resolve({ id: log._id.toString() }) },
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.status).toBe('Rejected');
+    expect(data.rejectionReason).toBe('시간 과다');
+  });
+
+  it('returns 400 when rejecting without reason', async () => {
+    const log = await TimeLogModel.create({
+      userId: preparerId,
+      clientId,
+      projectId,
+      date: new Date('2026-06-20'),
+      hours: 2,
+      description: 'Work',
+      status: 'Pending',
+    });
+    mockSession('Approver', { userId: approverId });
+    const res = await patchTimeLogStatus(
+      makeRequest('PATCH', `http://localhost/api/timelogs/${log._id}/status`, {
+        status: 'Rejected',
+      }),
+      { params: Promise.resolve({ id: log._id.toString() }) },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('returns userName for approver list', async () => {
+    await TimeLogModel.create({
+      userId: preparerId,
+      clientId,
+      projectId,
+      date: new Date('2026-06-20'),
+      hours: 2,
+      description: 'Work',
+    });
+    mockSession('Approver', { userId: approverId });
+    const res = await listTimeLogs(makeRequest('GET', 'http://localhost/api/timelogs'));
+    const data = await res.json();
+    expect(data[0].userName).toBe('Preparer');
   });
 
   it('returns 403 for Preparer', async () => {

@@ -13,7 +13,7 @@ export async function GET() {
   return NextResponse.json(
     clients.map((c) => ({
       value: String(c._id),
-      label: c.name,
+      label: `${c.name} (${c.clientCode})`,
       clientCode: c.clientCode,
     })),
   );

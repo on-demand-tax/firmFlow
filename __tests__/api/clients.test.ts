@@ -266,6 +266,10 @@ describe('GET /api/clients/options', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data).toHaveLength(1);
-    expect(data[0]).toMatchObject({ label: 'Option Client', value: expect.any(String) });
+    expect(data[0]).toMatchObject({
+      label: 'Option Client (OPT01)',
+      value: expect.any(String),
+      clientCode: 'OPT01',
+    });
   });
 });

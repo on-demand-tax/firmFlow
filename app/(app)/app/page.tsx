@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import DashboardSummary from '@/components/app/DashboardSummary';
+import {
+  DataRecordCard,
+  DataRecordRow,
+} from '@/components/app/DataRecordCard';
+import { ResponsiveDataView } from '@/components/app/ResponsiveDataView';
+import { formatCurrencyTotals, formatMoney } from '@/lib/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +28,7 @@ interface DashboardProject {
   clientName: string;
   hours: number;
   laborCost: number;
-  coreExpense: number;
+  coreExpense: { KRW: number; USD: number };
 }
 
 interface DashboardData {
@@ -30,13 +36,13 @@ interface DashboardData {
   summary: {
     totalHours: number;
     totalLaborCost: number;
-    totalCoreExpense: number;
-    totalOverhead: number;
+    totalCoreExpense: { KRW: number; USD: number };
+    totalOverhead: { KRW: number; USD: number };
     pendingTimeLogCount: number;
     pendingExpenseCount: number;
   };
   projects: DashboardProject[];
-  overhead: { amount: number };
+  overhead: { KRW: number; USD: number };
 }
 
 interface ClientOption {
@@ -80,8 +86,14 @@ export default function DashboardPage() {
 
     const res = await fetch(`/api/dashboard?${params.toString()}`);
     if (!res.ok) {
-      const body = await res.json();
-      setError(body.error ?? '대시보드를 불러오지 못했습니다');
+      let message = '대시보드를 불러오지 못했습니다';
+      try {
+        const body = await res.json();
+        message = body.error ?? message;
+      } catch {
+        // API may return an empty body when the server throws before jsonError.
+      }
+      setError(message);
       setData(null);
     } else {
       setData(await res.json());
@@ -112,8 +124,8 @@ export default function DashboardPage() {
     void init();
   }, [loadDashboard]);
 
-  function formatCurrency(amount: number) {
-    return `${amount.toLocaleString('ko-KR')}원`;
+  function formatLaborCost(amount: number) {
+    return formatMoney(amount, 'KRW');
   }
 
   return (
@@ -220,40 +232,67 @@ export default function DashboardPage() {
               {data.projects.length === 0 ? (
                 <p className="text-muted-foreground">해당 기간의 프로젝트 데이터가 없습니다.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>고객</TableHead>
-                      <TableHead>프로젝트</TableHead>
-                      <TableHead className="text-right">시간</TableHead>
-                      <TableHead className="text-right">인건비</TableHead>
-                      <TableHead className="text-right">직접경비</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.projects.map((project) => (
-                      <TableRow key={project.projectId}>
-                        <TableCell>{project.clientName}</TableCell>
-                        <TableCell>{project.projectName}</TableCell>
-                        <TableCell className="text-right">{project.hours}h</TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(project.laborCost)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(project.coreExpense)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="font-medium">
-                      <TableCell colSpan={2}>간접비 (전체)</TableCell>
-                      <TableCell className="text-right">—</TableCell>
-                      <TableCell className="text-right">—</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(data.overhead.amount)}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+                <ResponsiveDataView
+                  mobile={
+                    <div className="flex flex-col gap-3">
+                      {data.projects.map((project) => (
+                        <DataRecordCard key={project.projectId}>
+                          <p className="font-semibold">{project.projectName}</p>
+                          <DataRecordRow label="고객">{project.clientName}</DataRecordRow>
+                          <DataRecordRow label="시간">{project.hours}h</DataRecordRow>
+                          <DataRecordRow label="인건비">
+                            {formatLaborCost(project.laborCost)}
+                          </DataRecordRow>
+                          <DataRecordRow label="직접경비">
+                            {formatCurrencyTotals(project.coreExpense)}
+                          </DataRecordRow>
+                        </DataRecordCard>
+                      ))}
+                      <DataRecordCard>
+                        <p className="font-semibold">간접비 (전체)</p>
+                        <DataRecordRow label="간접비">
+                          {formatCurrencyTotals(data.overhead)}
+                        </DataRecordRow>
+                      </DataRecordCard>
+                    </div>
+                  }
+                  desktop={
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>고객</TableHead>
+                          <TableHead>프로젝트</TableHead>
+                          <TableHead className="text-right">시간</TableHead>
+                          <TableHead className="text-right">인건비</TableHead>
+                          <TableHead className="text-right">직접경비</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.projects.map((project) => (
+                          <TableRow key={project.projectId}>
+                            <TableCell>{project.clientName}</TableCell>
+                            <TableCell>{project.projectName}</TableCell>
+                            <TableCell className="text-right">{project.hours}h</TableCell>
+                            <TableCell className="text-right">
+                              {formatLaborCost(project.laborCost)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrencyTotals(project.coreExpense)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="font-medium">
+                          <TableCell colSpan={2}>간접비 (전체)</TableCell>
+                          <TableCell className="text-right">—</TableCell>
+                          <TableCell className="text-right">—</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrencyTotals(data.overhead)}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  }
+                />
               )}
             </CardContent>
           </Card>

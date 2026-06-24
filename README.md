@@ -3,9 +3,33 @@
 **FirmFlow**는 소규모 회계법인(5–15명)을 위한 내부 업무 관리 웹앱과 공개 마케팅 사이트를 하나의 Next.js 프로젝트로 제공합니다.
 
 - **내부 앱 (`/app`)** — 시간 기록, 경비, 고객·프로젝트, 승인 워크플로, 대시보드, HR/급여 이력
-- **마케팅 사이트 (`/`, `/about`, `/services`, `/contact`)** — 회계법인 소개 및 문의
+- **마케팅 사이트 (`/`, `/about`, `/services`, `/contact`)** — 회계법인 소개 및 문의 (플레이스홀더)
 
-**Tech stack:** Next.js (App Router), Tailwind CSS, Shadcn UI, MongoDB (Mongoose), Google Drive API, NextAuth.js (Google Workspace OAuth)
+**Tech stack:** Next.js 16 (App Router), React 19, Tailwind CSS 4, Shadcn UI, MongoDB (Mongoose), Google Drive API, NextAuth.js (Google Workspace OAuth)
+
+---
+
+## Current status / 현재 상태
+
+> AI Agent·재개 시 참고용 스냅샷. 상세 명세는 [`docs/specification.md`](docs/specification.md) §6.
+
+| 항목 | 상태 |
+|------|------|
+| **MVP** | 구현 완료 (`npm test` → **202 tests** passed) |
+| **Phase 2** | 청구·수금 집계, Excel/PDF Export, 프로덕션 배포 — 미구현 |
+| **프로젝트 유형** | `lib/project-types.ts` — 10종 `projectType`, `workSubtype`, `billingModel` ([§3.3](docs/specification.md)) |
+| **기장 타임로그 액티비티** | `lib/project-activities.ts` — `BookkeepingAgency` 시 `activity` 필수 ([§3.4](docs/specification.md)) |
+| **RBAC** | `Admin` ⊃ `Approver` ⊃ `Preparer` — [`lib/permissions.ts`](lib/permissions.ts) |
+
+---
+
+## Documentation / 문서
+
+| 문서 | 용도 |
+|------|------|
+| [`docs/README.md`](docs/README.md) | **AI Agent 읽기 순서** · 코드 위치 · superpowers 경고 |
+| [`docs/specification.md`](docs/specification.md) | **SSOT** — PRD, 스키마, API, 로드맵 |
+| [`docs/deploy-vercel.md`](docs/deploy-vercel.md) | Atlas, Google, Vercel 배포 상세 |
 
 ---
 
@@ -20,6 +44,22 @@
 
 ---
 
+## Quick start / 빠른 시작
+
+```bash
+npm install
+cp .env.example .env.local
+# Edit .env.local with your credentials
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+- Marketing: `/`, `/about`, `/services`, `/contact`
+- Sign in: `/login` → Google OAuth → `/app`
+
+---
+
 ## Environment variables / 환경 변수
 
 Copy `.env.example` to `.env.local` and fill in all values:
@@ -31,96 +71,71 @@ cp .env.example .env.local
 | Variable | Description |
 |----------|-------------|
 | `MONGODB_URI` | MongoDB Atlas connection string |
-| `NEXTAUTH_SECRET` | Random secret for encrypting NextAuth sessions (`openssl rand -base64 32`) |
-| `NEXTAUTH_URL` | Public app URL (`http://localhost:3000` in dev; production domain on Vercel) |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID for Workspace sign-in |
+| `MONGODB_DNS_SERVERS` | *(optional)* Custom DNS for `mongodb+srv` — Windows `querySrv ECONNREFUSED` 시 (e.g. `8.8.8.8,8.8.4.4,1.1.1.1`) |
+| `NEXTAUTH_SECRET` | Random secret (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | Public app URL (`http://localhost:3000` in dev) |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `ALLOWED_EMAIL_DOMAIN` | Allowed Workspace domain without `@` (e.g. `yourfirm.com`) |
-| `INITIAL_ADMIN_EMAIL` | Email of the first admin; must sign in before other users can register |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Service account email for Google Drive API |
-| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Service account private key (PEM; use `\n` for newlines in `.env.local`) |
+| `ALLOWED_EMAIL_DOMAIN` | Allowed Workspace domain without `@` |
+| `INITIAL_ADMIN_EMAIL` | First admin email — must sign in before other users |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Service account for Drive API |
+| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Service account PEM (`\n` for newlines in `.env.local`) |
 | `GOOGLE_DRIVE_MASTER_FOLDER_ID` | Root Drive folder ID for `FirmFlow_Data` |
 
 ---
 
-## Local development / 로컬 개발
+## App cheat sheet / 앱 치트시트
 
-```bash
-npm install
-cp .env.example .env.local
-# Edit .env.local with your credentials
-npm run dev
-```
+### Internal routes (`/app`)
 
-Open [http://localhost:3000](http://localhost:3000).
+| Path | 설명 |
+|------|------|
+| `/app` | 대시보드 |
+| `/app/timesheet` | 타임시트 |
+| `/app/expenses` | 경비 |
+| `/app/approvals` | 승인 대기 (Approver+) |
+| `/app/clients` | 고객 (Approver+) |
+| `/app/projects` | 프로젝트 (Approver+) |
+| `/app/admin/users` | 사용자 (Admin) |
+| `/app/admin/locks` | 기간 마감 (Admin) |
+| `/app/admin/salary` | 급여 단가 (Admin) |
 
-- Marketing pages: `/`, `/about`, `/services`, `/contact`
-- Sign in: `/login` → redirects to `/app` after Google OAuth
+### Role-based nav (`lib/nav-items.ts`)
+
+| Role | 추가 메뉴 |
+|------|-----------|
+| **Preparer** | 대시보드, 타임시트, 경비 |
+| **Approver** | + 승인, 고객, 프로젝트 |
+| **Admin** | + 사용자, 기간 마감, 급여 단가 |
+
+### Key APIs
+
+`users`, `clients`, `projects`, `project-types`, `timelogs`, `expenses`, `expenses/upload`, `period-locks`, `dashboard` — 상세는 [`docs/specification.md`](docs/specification.md).
 
 ---
 
 ## Testing / 테스트
 
 ```bash
-npm test
-```
-
-Watch mode:
-
-```bash
+npm test                  # 202 tests
 npm run test:watch
-```
-
-Other checks:
-
-```bash
 npm run lint
 npm run build
 ```
 
 ---
 
-## Deployment (Vercel) / 배포
+## Deployment / 배포
 
-1. Push the repo to GitHub and import the project in [Vercel](https://vercel.com).
-2. Set **all** environment variables from `.env.example` in the Vercel project settings.
-3. Set `NEXTAUTH_URL` to your production URL (e.g. `https://firmflow.yourfirm.com`).
-4. For `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, paste the full PEM; Vercel accepts multiline values in the dashboard.
-5. Add the production callback URL to your Google OAuth client:  
-   `https://<your-domain>/api/auth/callback/google`
-6. Deploy. Vercel runs `next build` automatically.
+프로덕션 배포·Google 설정·Atlas 상세는 **[`docs/deploy-vercel.md`](docs/deploy-vercel.md)** 를 따르세요.
 
-**MongoDB Atlas:** Allow network access from `0.0.0.0/0` (or Vercel IP ranges) for serverless functions.
+요약:
 
----
-
-## Google setup checklist / Google 설정 체크리스트
-
-### 1. OAuth (sign-in)
-
-- [ ] Create a Google Cloud project
-- [ ] Enable **Google+ API** / People API as required by OAuth
-- [ ] Create **OAuth 2.0 Client ID** (Web application)
-- [ ] Authorized redirect URIs:
-  - `http://localhost:3000/api/auth/callback/google` (dev)
-  - `https://<production-domain>/api/auth/callback/google` (prod)
-- [ ] Copy Client ID and Secret to `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
-
-### 2. Service Account (Google Drive)
-
-- [ ] Create a **Service Account** and download JSON key
-- [ ] Enable **Google Drive API** for the project
-- [ ] Create a shared Drive folder `FirmFlow_Data` (or use an existing master folder)
-- [ ] **Share** `FirmFlow_Data` with the service account email (Editor access)
-- [ ] Set `GOOGLE_DRIVE_MASTER_FOLDER_ID` to that folder’s ID
-- [ ] Set `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` from the key file
-
-### 3. First admin bootstrap
-
-- [ ] Set `INITIAL_ADMIN_EMAIL` to the partner/admin Workspace email
-- [ ] Set `ALLOWED_EMAIL_DOMAIN` to your firm’s domain
-- [ ] Deploy or run locally, then sign in at `/login` with that email — the account is created as **Admin**
-- [ ] After the first admin exists, other `@domain` users can sign in (default role: **Preparer**)
+1. GitHub에 push → Vercel import
+2. `.env.example`의 **모든** 변수를 Vercel에 설정 (`NEXTAUTH_URL` = 프로덕션 URL)
+3. Google OAuth redirect: `https://<domain>/api/auth/callback/google`
+4. Atlas Network Access: `0.0.0.0/0` (Vercel serverless)
+5. `INITIAL_ADMIN_EMAIL` 계정으로 첫 로그인 → Admin 생성
 
 ---
 
@@ -128,15 +143,15 @@ npm run build
 
 | Area | Features |
 |------|----------|
-| **Auth & RBAC** | Google Workspace OAuth, domain restriction, roles: Admin / Approver / Preparer |
-| **Clients** | CRUD, auto Google Drive folder per client (`FirmFlow_Data/[name]_[code]`) |
-| **Projects** | Per-client projects, Active / Completed status |
-| **Timesheet** | Time log entry, responsive grid (mobile cards / desktop matrix), 24h/day validation |
-| **Expenses** | Core (project) and Overhead types, receipt upload to Drive |
-| **Approvals** | Approver/Admin approve or reject pending time logs |
-| **Dashboard** | Monthly hours, labor cost, core/overhead totals, per-project breakdown |
-| **Admin** | User role/status management, salary history (`salaryTable`), period locks |
-| **Marketing** | Public landing, about, services, contact pages |
+| **Auth & RBAC** | Google Workspace OAuth, domain restriction, Admin / Approver / Preparer |
+| **Clients** | CRUD, auto Drive folder (`FirmFlow_Data/[name]_[code]`) |
+| **Projects** | 10종 `projectType`, `workSubtype`, `billingModel`; 동적 등록 폼; `GET /api/project-types` |
+| **Timesheet** | Time logs, `BookkeepingAgency` activity picker, responsive grid, 24h/day validation, weekday summary |
+| **Expenses** | Core / Overhead, KRW/USD, receipt upload to Drive |
+| **Approvals** | Approve/reject pending time logs & expenses |
+| **Dashboard** | Monthly hours, labor cost, core/overhead, per-project breakdown |
+| **Admin** | Users, `salaryTable`, period locks |
+| **Marketing** | Landing, about, services, contact (placeholder content) |
 
 ---
 
@@ -148,13 +163,11 @@ app/
   (app)/app/       # Authenticated internal app
   api/             # Route handlers
 components/        # UI and app components
-lib/               # Auth, DB, permissions, Drive adapter
+lib/               # project-types, permissions, drive, billing, …
 models/            # Mongoose schemas
-__tests__/         # Unit, API, and component tests
-docs/              # Product specification (Korean PRD)
+__tests__/         # Unit, API, component tests
+docs/              # SSOT + deploy guide (see docs/README.md)
 ```
-
-Full product requirements: [`docs/specification.md`](docs/specification.md)
 
 ---
 

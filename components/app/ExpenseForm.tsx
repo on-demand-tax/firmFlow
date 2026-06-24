@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ReceiptAttachment } from '@/components/app/ReceiptAttachment';
+import { EXPENSE_CURRENCIES, formatAmountInput, parseAmountInput, type ExpenseCurrency } from '@/lib/currency';
 
 export interface ClientOption {
   value: string;
@@ -24,6 +26,7 @@ export interface ExpenseFormValues {
   clientId?: string;
   projectId?: string;
   amount: number;
+  currency: ExpenseCurrency;
   date: string;
   description: string;
   receiptFile?: File | null;
@@ -54,6 +57,7 @@ const emptyForm: {
   clientId: string;
   projectId: string;
   amount: string;
+  currency: ExpenseCurrency;
   date: string;
   description: string;
   receiptFile: File | null;
@@ -62,6 +66,7 @@ const emptyForm: {
   clientId: '',
   projectId: '',
   amount: '',
+  currency: 'KRW',
   date: '',
   description: '',
   receiptFile: null,
@@ -85,11 +90,18 @@ export function ExpenseForm({
     e.preventDefault();
     setError('');
 
+    const amount = parseAmountInput(form.amount);
+    if (amount === undefined) {
+      setError('필수 항목을 입력해 주세요');
+      return;
+    }
+
     const values: ExpenseFormValues = {
       expenseType: form.expenseType,
       clientId: form.expenseType === 'Core' ? form.clientId : undefined,
       projectId: form.expenseType === 'Core' ? form.projectId : undefined,
-      amount: Number(form.amount),
+      amount,
+      currency: form.currency,
       date: form.date,
       description: form.description,
       receiptFile: form.receiptFile,
@@ -178,14 +190,44 @@ export function ExpenseForm({
         </>
       )}
       <div className="space-y-2">
+        <Label htmlFor="currency">통화</Label>
+        <select
+          id="currency"
+          className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          value={form.currency}
+          onChange={(e) => {
+            const currency = e.target.value as ExpenseCurrency;
+            setForm((prev) => ({
+              ...prev,
+              currency,
+              amount: prev.amount
+                ? formatAmountInput(prev.amount.replace(/,/g, ''), currency)
+                : '',
+            }));
+          }}
+        >
+          {EXPENSE_CURRENCIES.map((currency) => (
+            <option key={currency} value={currency}>
+              {currency}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="amount">금액</Label>
         <Input
           id="amount"
-          type="number"
-          min={0}
-          step={1}
+          type="text"
+          inputMode={form.currency === 'USD' ? 'decimal' : 'numeric'}
+          autoComplete="off"
           value={form.amount}
-          onChange={(e) => setForm({ ...form, amount: e.target.value })}
+          onChange={(e) =>
+            setForm((prev) => ({
+              ...prev,
+              amount: formatAmountInput(e.target.value, prev.currency),
+            }))
+          }
+          placeholder={form.currency === 'USD' ? '0.00' : '0'}
           required
         />
       </div>
@@ -198,15 +240,11 @@ export function ExpenseForm({
           required
         />
       </div>
-      <div className="space-y-2 sm:col-span-2">
-        <Label htmlFor="receipt">영수증 (PDF, JPEG, PNG)</Label>
-        <Input
-          id="receipt"
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-          onChange={(e) =>
-            setForm({ ...form, receiptFile: e.target.files?.[0] ?? null })
-          }
+      <div className="sm:col-span-2">
+        <ReceiptAttachment
+          value={form.receiptFile}
+          onChange={(receiptFile) => setForm({ ...form, receiptFile })}
+          disabled={submitting}
         />
       </div>
       {error && <p className="text-sm text-destructive sm:col-span-2">{error}</p>}

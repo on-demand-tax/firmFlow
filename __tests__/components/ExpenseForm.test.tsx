@@ -16,6 +16,7 @@ const baseCoreValues: ExpenseFormValues = {
   clientId: 'client-1',
   projectId: 'proj-1',
   amount: 50000,
+  currency: 'KRW',
   date: '2026-06-20',
   description: 'Travel',
 };
@@ -23,6 +24,7 @@ const baseCoreValues: ExpenseFormValues = {
 const baseOverheadValues: ExpenseFormValues = {
   expenseType: 'Overhead',
   amount: 12000,
+  currency: 'USD',
   date: '2026-06-20',
   description: 'Office supplies',
 };

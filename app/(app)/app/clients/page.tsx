@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import {
+  DataRecordActions,
+  DataRecordCard,
+  DataRecordRow,
+} from '@/components/app/DataRecordCard';
+import { ResponsiveDataView } from '@/components/app/ResponsiveDataView';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -193,44 +199,75 @@ export default function ClientsPage() {
           ) : clients.length === 0 ? (
             <p className="text-muted-foreground">등록된 고객이 없습니다.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>고객사명</TableHead>
-                  <TableHead>코드</TableHead>
-                  <TableHead>사업자번호</TableHead>
-                  <TableHead>담당자</TableHead>
-                  <TableHead className="text-right">작업</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clients.map((client) => (
-                  <TableRow key={client._id}>
-                    <TableCell>{client.name}</TableCell>
-                    <TableCell>{client.clientCode}</TableCell>
-                    <TableCell>{client.businessRegistrationNumber}</TableCell>
-                    <TableCell>{client.contactPerson}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => startEdit(client)}
-                      >
-                        수정
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive"
-                        onClick={() => handleDelete(client._id)}
-                      >
-                        삭제
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <ResponsiveDataView
+              mobile={
+                <div className="flex flex-col gap-3">
+                  {clients.map((client) => (
+                    <DataRecordCard key={client._id}>
+                      <p className="font-semibold">{client.name}</p>
+                      <DataRecordRow label="코드">{client.clientCode}</DataRecordRow>
+                      <DataRecordRow label="사업자번호">
+                        {client.businessRegistrationNumber}
+                      </DataRecordRow>
+                      <DataRecordRow label="담당자">{client.contactPerson}</DataRecordRow>
+                      <DataRecordActions>
+                        <Button variant="ghost" size="sm" onClick={() => startEdit(client)}>
+                          수정
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => handleDelete(client._id)}
+                        >
+                          삭제
+                        </Button>
+                      </DataRecordActions>
+                    </DataRecordCard>
+                  ))}
+                </div>
+              }
+              desktop={
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>고객사명</TableHead>
+                      <TableHead>코드</TableHead>
+                      <TableHead>사업자번호</TableHead>
+                      <TableHead>담당자</TableHead>
+                      <TableHead className="text-right">작업</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clients.map((client) => (
+                      <TableRow key={client._id}>
+                        <TableCell>{client.name}</TableCell>
+                        <TableCell>{client.clientCode}</TableCell>
+                        <TableCell>{client.businessRegistrationNumber}</TableCell>
+                        <TableCell>{client.contactPerson}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEdit(client)}
+                          >
+                            수정
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => handleDelete(client._id)}
+                          >
+                            삭제
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              }
+            />
           )}
         </CardContent>
       </Card>

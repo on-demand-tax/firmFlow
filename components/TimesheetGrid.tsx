@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 
+import { SimpleModal } from '@/components/app/SimpleModal';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { lockedEntryClass, lockedEntryTitle } from '@/lib/locked-entry-styles';
+import { useIsMobile } from '@/lib/use-media-query';
 import {
   Table,
   TableBody,
@@ -19,8 +22,10 @@ export interface TimesheetGridEntry {
   clientName: string;
   projectLabel: string;
   hours: number;
+  activityLabel?: string;
   description: string;
   status: 'Pending' | 'Approved' | 'Rejected';
+  rejectionReason?: string;
   lockedAt?: string;
 }
 
@@ -35,22 +40,6 @@ const statusLabel: Record<TimesheetGridEntry['status'], string> = {
   Rejected: '반려',
 };
 
-const MOBILE_BREAKPOINT = 768;
-
-function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT,
-  );
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  return isMobile;
-}
-
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('ko-KR', {
     month: 'short',
@@ -59,7 +48,78 @@ function formatDate(dateStr: string) {
   });
 }
 
-function MobileCardStack({ entries }: { entries: TimesheetGridEntry[] }) {
+function formatFullDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('ko-KR');
+}
+
+function EntryStatusBadge({
+  entry,
+  onViewReject,
+}: {
+  entry: TimesheetGridEntry;
+  onViewReject: () => void;
+}) {
+  if (entry.status === 'Rejected') {
+    return (
+      <button
+        type="button"
+        className="inline-flex cursor-pointer"
+        onClick={onViewReject}
+        title="반려 사유 보기"
+      >
+        <Badge variant="secondary">{statusLabel[entry.status]}</Badge>
+      </button>
+    );
+  }
+
+  return (
+    <Badge variant={entry.status === 'Approved' ? 'default' : 'secondary'}>
+      {statusLabel[entry.status]}
+    </Badge>
+  );
+}
+
+function RejectReasonModal({
+  entry,
+  onClose,
+}: {
+  entry: TimesheetGridEntry | null;
+  onClose: () => void;
+}) {
+  return (
+    <SimpleModal
+      open={!!entry}
+      title="반려 사유"
+      description={
+        entry
+          ? `${formatFullDate(entry.date)} · ${entry.clientName} — ${entry.projectLabel}`
+          : undefined
+      }
+      onClose={onClose}
+      footer={
+        <button
+          type="button"
+          className="inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-sm font-medium hover:bg-muted"
+          onClick={onClose}
+        >
+          닫기
+        </button>
+      }
+    >
+      <p className="whitespace-pre-wrap text-sm">
+        {entry?.rejectionReason?.trim() || '등록된 반려 사유가 없습니다.'}
+      </p>
+    </SimpleModal>
+  );
+}
+
+function MobileCardStack({
+  entries,
+  onViewReject,
+}: {
+  entries: TimesheetGridEntry[];
+  onViewReject: (entry: TimesheetGridEntry) => void;
+}) {
   if (entries.length === 0) {
     return (
       <div data-testid="mobile-timesheet-card-stack">
@@ -71,18 +131,22 @@ function MobileCardStack({ entries }: { entries: TimesheetGridEntry[] }) {
   return (
     <div data-testid="mobile-timesheet-card-stack" className="flex flex-col gap-3">
       {entries.map((entry) => (
-        <Card key={entry.id}>
+        <Card
+          key={entry.id}
+          className={lockedEntryClass(entry.lockedAt)}
+          title={lockedEntryTitle(entry.lockedAt)}
+        >
           <CardContent className="space-y-2 pt-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{formatDate(entry.date)}</span>
-              <Badge variant={entry.status === 'Approved' ? 'default' : 'secondary'}>
-                {statusLabel[entry.status]}
-                {entry.lockedAt ? ' (마감)' : ''}
-              </Badge>
+              <EntryStatusBadge entry={entry} onViewReject={() => onViewReject(entry)} />
             </div>
             <p className="text-sm text-muted-foreground">
               {entry.clientName} — {entry.projectLabel}
             </p>
+            {entry.activityLabel && (
+              <p className="text-sm font-medium">{entry.activityLabel}</p>
+            )}
             <p className="text-sm">{entry.description}</p>
             <p className="text-sm font-semibold">{entry.hours}h</p>
           </CardContent>
@@ -92,76 +156,56 @@ function MobileCardStack({ entries }: { entries: TimesheetGridEntry[] }) {
   );
 }
 
-function DesktopMatrixGrid({ entries }: { entries: TimesheetGridEntry[] }) {
-  const matrix = useMemo(() => {
-    const dates = [...new Set(entries.map((e) => e.date))].sort();
-    const projects = [...new Set(entries.map((e) => `${e.clientName} — ${e.projectLabel}`))].sort(
-      (a, b) => a.localeCompare(b, 'ko'),
-    );
-
-    const cellMap = new Map<string, TimesheetGridEntry[]>();
-    for (const entry of entries) {
-      const key = `${entry.clientName} — ${entry.projectLabel}|${entry.date}`;
-      const list = cellMap.get(key) ?? [];
-      list.push(entry);
-      cellMap.set(key, list);
-    }
-
-    return { dates, projects, cellMap };
-  }, [entries]);
-
+function DesktopEntryList({
+  entries,
+  onViewReject,
+}: {
+  entries: TimesheetGridEntry[];
+  onViewReject: (entry: TimesheetGridEntry) => void;
+}) {
   if (entries.length === 0) {
     return (
-      <div data-testid="desktop-matrix-grid-view">
+      <div data-testid="desktop-entry-list">
         <p className="text-muted-foreground">등록된 타임로그가 없습니다.</p>
       </div>
     );
   }
 
   return (
-    <div data-testid="desktop-matrix-grid-view" className="overflow-x-auto">
+    <div data-testid="desktop-entry-list" className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[180px]">프로젝트</TableHead>
-            {matrix.dates.map((date) => (
-              <TableHead key={date} className="min-w-[80px] text-center">
-                {formatDate(date)}
-              </TableHead>
-            ))}
-            <TableHead className="text-center">합계</TableHead>
+            <TableHead>작업일</TableHead>
+            <TableHead>프로젝트</TableHead>
+            <TableHead>시간</TableHead>
+            <TableHead>내용</TableHead>
+            <TableHead>상태</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {matrix.projects.map((projectKey) => {
-            let rowTotal = 0;
-            return (
-              <TableRow key={projectKey}>
-                <TableCell className="font-medium">{projectKey}</TableCell>
-                {matrix.dates.map((date) => {
-                  const cellEntries = matrix.cellMap.get(`${projectKey}|${date}`) ?? [];
-                  const hours = cellEntries.reduce((sum, e) => sum + e.hours, 0);
-                  rowTotal += hours;
-                  const description = cellEntries.map((e) => e.description).join(', ');
-                  return (
-                    <TableCell key={date} className="text-center align-top">
-                      {hours > 0 ? (
-                        <div>
-                          <span className="font-semibold">{hours}</span>
-                          {description && (
-                            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  );
-                })}
-                <TableCell className="text-center font-semibold">{rowTotal}</TableCell>
-              </TableRow>
-            );
-          })}
+          {entries.map((entry) => (
+            <TableRow
+              key={entry.id}
+              className={lockedEntryClass(entry.lockedAt)}
+              title={lockedEntryTitle(entry.lockedAt)}
+            >
+              <TableCell>{formatFullDate(entry.date)}</TableCell>
+              <TableCell>
+                {entry.clientName} — {entry.projectLabel}
+              </TableCell>
+              <TableCell>{entry.hours}h</TableCell>
+              <TableCell>
+                {entry.activityLabel && (
+                  <p className="text-sm font-medium">{entry.activityLabel}</p>
+                )}
+                <p className="text-sm">{entry.description}</p>
+              </TableCell>
+              <TableCell>
+                <EntryStatusBadge entry={entry} onViewReject={() => onViewReject(entry)} />
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </div>
@@ -172,10 +216,21 @@ export default function TimesheetGrid({ entries, viewMode }: TimesheetGridProps)
   const isMobileAuto = useIsMobile();
   const showMobile =
     viewMode === 'mobile' || (viewMode === 'auto' && isMobileAuto);
+  const [viewRejectEntry, setViewRejectEntry] = useState<TimesheetGridEntry | null>(
+    null,
+  );
 
-  if (showMobile) {
-    return <MobileCardStack entries={entries} />;
-  }
-
-  return <DesktopMatrixGrid entries={entries} />;
+  return (
+    <>
+      <RejectReasonModal
+        entry={viewRejectEntry}
+        onClose={() => setViewRejectEntry(null)}
+      />
+      {showMobile ? (
+        <MobileCardStack entries={entries} onViewReject={setViewRejectEntry} />
+      ) : (
+        <DesktopEntryList entries={entries} onViewReject={setViewRejectEntry} />
+      )}
+    </>
+  );
 }

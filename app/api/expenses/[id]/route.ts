@@ -8,6 +8,7 @@ import { ExpenseModel } from '@/models/Expense';
 import {
   isValidAmount,
   parseExpenseDate,
+  parseExpenseCurrency,
   serializeExpense,
   validateProjectBelongsToClient,
 } from '@/lib/expense-helpers';
@@ -85,6 +86,14 @@ export async function PATCH(request: Request, context: RouteContext) {
       return jsonError('금액은 0 이상이어야 합니다', 400);
     }
     updates.amount = body.amount;
+  }
+
+  if (body.currency !== undefined) {
+    const parsedCurrency = parseExpenseCurrency(body.currency);
+    if (!parsedCurrency) {
+      return jsonError('통화는 KRW 또는 USD만 선택할 수 있습니다', 400);
+    }
+    updates.currency = parsedCurrency;
   }
 
   if (body.date !== undefined) {

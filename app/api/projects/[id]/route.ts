@@ -1,26 +1,13 @@
 import { NextResponse } from 'next/server';
+
 import dbConnect from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
+import { serializeProject } from '@/lib/project-serialize';
+import { normalizeLegacyProject, validateProjectPayload } from '@/lib/project-types';
 import { ProjectModel } from '@/models/Project';
 import { ExpenseModel } from '@/models/Expense';
 import { TimeLogModel } from '@/models/TimeLog';
-
-function serializeProject(project: {
-  _id: unknown;
-  clientId: unknown;
-  projectName: string;
-  status: string;
-  createdAt: Date;
-}) {
-  return {
-    _id: String(project._id),
-    clientId: String(project.clientId),
-    projectName: project.projectName,
-    status: project.status,
-    createdAt: project.createdAt,
-  };
-}
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -57,15 +44,57 @@ export async function PATCH(request: Request, context: RouteContext) {
     return jsonError('프로젝트를 찾을 수 없습니다', 404);
   }
 
-  if (body.projectName !== undefined) {
-    project.projectName = String(body.projectName).trim();
+  const normalized = normalizeLegacyProject({
+    projectType: project.projectType,
+    workSubtype: project.workSubtype,
+  });
+
+  const validation = validateProjectPayload(body, {
+    isPatch: true,
+    userRole: auth.session.user.role,
+    existing: {
+      projectType: normalized.projectType,
+      billingModel: project.billingModel,
+      currency: project.currency,
+      billingCycle: project.billingCycle,
+      contractAmount: project.contractAmount,
+      baseFeeAmount: project.baseFeeAmount,
+      successFeeRate: project.successFeeRate,
+      hourlyRate: project.hourlyRate,
+      billingAnchorDay: project.billingAnchorDay,
+      fiscalYearStart: project.fiscalYearStart,
+      fiscalYearEnd: project.fiscalYearEnd,
+      workSubtype: project.workSubtype,
+      eventDate: project.eventDate,
+      notes: project.notes,
+    },
+  });
+  if (!validation.ok) {
+    return jsonError(validation.error, validation.status);
   }
-  if (body.status !== undefined) {
-    if (!['Active', 'Completed'].includes(body.status)) {
-      return jsonError('상태 값이 올바르지 않습니다', 400);
-    }
-    project.status = body.status;
+
+  const data = validation.data;
+
+  if (data.projectName !== undefined) project.projectName = data.projectName;
+  if (body.projectType !== undefined) project.projectType = data.projectType;
+  if (body.billingModel !== undefined || body.projectType !== undefined) {
+    project.billingModel = data.billingModel;
   }
+  if (data.status !== undefined) project.status = data.status;
+  if (body.billingCycle !== undefined) project.billingCycle = data.billingCycle;
+  if (body.currency !== undefined) project.currency = data.currency;
+  if (body.contractAmount !== undefined) project.contractAmount = data.contractAmount;
+  if (body.baseFeeAmount !== undefined) project.baseFeeAmount = data.baseFeeAmount;
+  if (body.successFeeRate !== undefined) project.successFeeRate = data.successFeeRate;
+  if (body.hourlyRate !== undefined) project.hourlyRate = data.hourlyRate;
+  if (body.workSubtype !== undefined) project.workSubtype = data.workSubtype;
+  if (body.eventDate !== undefined) project.eventDate = data.eventDate;
+  if (body.fiscalYearStart !== undefined) project.fiscalYearStart = data.fiscalYearStart;
+  if (body.fiscalYearEnd !== undefined) project.fiscalYearEnd = data.fiscalYearEnd;
+  if (body.billingAnchorDay !== undefined) {
+    project.billingAnchorDay = data.billingAnchorDay;
+  }
+  if (body.notes !== undefined) project.notes = data.notes;
 
   await project.save();
   return NextResponse.json(serializeProject(project));

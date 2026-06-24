@@ -99,12 +99,99 @@ describe('POST /api/projects', () => {
       makeRequest('POST', 'http://localhost/api/projects', {
         clientId: clientId.toString(),
         projectName: 'Audit 2026',
+        projectType: 'General',
       }),
     );
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.projectName).toBe('Audit 2026');
     expect(data.status).toBe('Active');
+    expect(data.projectType).toBe('General');
+  });
+
+  it('creates BookkeepingAgency with derived billing defaults', async () => {
+    mockSession('Approver');
+    const res = await createProject(
+      makeRequest('POST', 'http://localhost/api/projects', {
+        clientId: clientId.toString(),
+        projectName: '기장대리',
+        projectType: 'BookkeepingAgency',
+        contractAmount: 200000,
+        currency: 'KRW',
+        billingAnchorDay: 15,
+      }),
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.billingModel).toBe('Retainer');
+    expect(data.billingCycle).toBe('Monthly');
+    expect(data.projectType).toBe('BookkeepingAgency');
+    expect(data.projectTypeLabel).toBe('기장대리');
+  });
+
+  it('accepts legacy MonthlyBookkeeping and normalizes type', async () => {
+    mockSession('Approver');
+    const res = await createProject(
+      makeRequest('POST', 'http://localhost/api/projects', {
+        clientId: clientId.toString(),
+        projectName: 'Legacy 기장',
+        projectType: 'MonthlyBookkeeping',
+        contractAmount: 200000,
+        currency: 'KRW',
+        billingAnchorDay: 15,
+      }),
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.projectType).toBe('BookkeepingAgency');
+    expect(data.workSubtype).toBe('GeneralBookkeeping');
+  });
+
+  it('returns 400 for TaxAmendment missing baseFeeAmount', async () => {
+    mockSession('Approver');
+    const res = await createProject(
+      makeRequest('POST', 'http://localhost/api/projects', {
+        clientId: clientId.toString(),
+        projectName: '경정',
+        projectType: 'OtherWork',
+        workSubtype: 'TaxAmendment',
+        currency: 'KRW',
+        eventDate: '2023-01-01',
+        successFeeRate: 20,
+      }),
+    );
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain('기본금');
+  });
+
+  it('returns warning for duplicate long-lived project', async () => {
+    mockSession('Approver');
+    await ProjectModel.create({
+      clientId,
+      projectName: 'Existing',
+      projectType: 'BookkeepingAgency',
+      workSubtype: 'GeneralBookkeeping',
+      billingModel: 'Retainer',
+      billingCycle: 'Monthly',
+      currency: 'KRW',
+      contractAmount: 100000,
+      billingAnchorDay: 1,
+    });
+
+    const res = await createProject(
+      makeRequest('POST', 'http://localhost/api/projects', {
+        clientId: clientId.toString(),
+        projectName: 'Another',
+        projectType: 'BookkeepingAgency',
+        contractAmount: 200000,
+        currency: 'KRW',
+        billingAnchorDay: 15,
+      }),
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.warning).toContain('기장대리');
   });
 
   it('returns 403 for Preparer', async () => {
@@ -204,7 +291,8 @@ describe('GET /api/projects/options', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data).toHaveLength(1);
-    expect(data[0].label).toBe('Active Project');
+    expect(data[0].label).toBe('Active Project (일반)');
+    expect(data[0].projectTypeLabel).toBe('일반');
   });
 
   it('includes Completed projects for Approver', async () => {
@@ -237,6 +325,7 @@ describe('GET /api/projects', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data).toHaveLength(1);
+    expect(data[0].projectTypeLabel).toBe('일반');
   });
 });
 
@@ -256,6 +345,31 @@ describe('PATCH /api/projects/[id]', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.status).toBe('Completed');
+  });
+
+  it('allows Approver to override billingModel', async () => {
+    mockSession('Approver');
+    const project = await ProjectModel.create({
+      clientId,
+      projectName: '기장',
+      projectType: 'BookkeepingAgency',
+      workSubtype: 'GeneralBookkeeping',
+      billingModel: 'Retainer',
+      billingCycle: 'Monthly',
+      currency: 'KRW',
+      contractAmount: 100000,
+      billingAnchorDay: 1,
+    });
+    const res = await patchProject(
+      makeRequest('PATCH', `http://localhost/api/projects/${project._id}`, {
+        billingModel: 'Hourly',
+        hourlyRate: 50000,
+      }),
+      { params: Promise.resolve({ id: project._id.toString() }) },
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.billingModel).toBe('Hourly');
   });
 });
 

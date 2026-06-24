@@ -4,6 +4,13 @@ import dbConnect from '@/lib/db';
 import { requireSession } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
 import { parseDashboardPeriod } from '@/lib/dashboard';
+import {
+  addToCurrencyTotals,
+  emptyCurrencyTotals,
+  type CurrencyTotals,
+  type ExpenseCurrency,
+} from '@/lib/currency';
+import { expenseCurrency } from '@/lib/expense-helpers';
 import { calculateProjectCost } from '@/lib/billingUtils';
 import { ClientModel } from '@/models/Client';
 import { ExpenseModel } from '@/models/Expense';
@@ -19,7 +26,7 @@ interface ProjectRow {
   clientName: string;
   hours: number;
   laborCost: number;
-  coreExpense: number;
+  coreExpense: CurrencyTotals;
 }
 
 export async function GET(request: Request) {
@@ -132,7 +139,7 @@ export async function GET(request: Request) {
       clientName: client?.name ?? '',
       hours: 0,
       laborCost: 0,
-      coreExpense: 0,
+      coreExpense: emptyCurrencyTotals(),
     };
     projectRows.set(projectIdStr, row);
     return row;
@@ -155,20 +162,22 @@ export async function GET(request: Request) {
     totalLaborCost += cost;
   }
 
-  let totalCoreExpense = 0;
+  const totalCoreExpense = emptyCurrencyTotals();
   for (const expense of approvedCoreExpenses) {
     if (!expense.projectId) continue;
     const projectIdStr = String(expense.projectId);
     const row = ensureProjectRow(projectIdStr);
     if (!row) continue;
-    row.coreExpense += expense.amount;
-    totalCoreExpense += expense.amount;
+    const currency = expenseCurrency(expense) as ExpenseCurrency;
+    addToCurrencyTotals(row.coreExpense, currency, expense.amount);
+    addToCurrencyTotals(totalCoreExpense, currency, expense.amount);
   }
 
-  const totalOverhead = approvedOverheadExpenses.reduce(
-    (sum, e) => sum + e.amount,
-    0,
-  );
+  const totalOverhead = emptyCurrencyTotals();
+  for (const expense of approvedOverheadExpenses) {
+    const currency = expenseCurrency(expense) as ExpenseCurrency;
+    addToCurrencyTotals(totalOverhead, currency, expense.amount);
+  }
 
   const sortedProjects = [...projectRows.values()].sort((a, b) =>
     a.projectName.localeCompare(b.projectName, 'ko'),
@@ -185,6 +194,6 @@ export async function GET(request: Request) {
       pendingExpenseCount,
     },
     projects: sortedProjects,
-    overhead: { amount: totalOverhead },
+    overhead: totalOverhead,
   });
 }

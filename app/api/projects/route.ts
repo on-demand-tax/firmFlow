@@ -1,32 +1,25 @@
 import { NextResponse } from 'next/server';
+
 import dbConnect from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
+import { serializeProject } from '@/lib/project-serialize';
+import {
+  getDuplicateWarningMessage,
+  isLongLivedProjectType,
+  validateProjectPayload,
+} from '@/lib/project-types';
 import { ProjectModel } from '@/models/Project';
 import { ClientModel } from '@/models/Client';
-
-function serializeProject(project: {
-  _id: unknown;
-  clientId: unknown;
-  projectName: string;
-  status: string;
-  createdAt: Date;
-}) {
-  return {
-    _id: String(project._id),
-    clientId: String(project.clientId),
-    projectName: project.projectName,
-    status: project.status,
-    createdAt: project.createdAt,
-  };
-}
 
 export async function GET() {
   const auth = await requireRole('Approver');
   if ('error' in auth) return auth.error;
 
   await dbConnect();
-  const projects = await ProjectModel.find().populate('clientId', 'name clientCode').sort({ projectName: 1 });
+  const projects = await ProjectModel.find()
+    .populate('clientId', 'name clientCode')
+    .sort({ projectName: 1 });
 
   return NextResponse.json(
     projects.map((p) => ({
@@ -42,23 +35,64 @@ export async function POST(request: Request) {
   if ('error' in auth) return auth.error;
 
   const body = await request.json();
-  const { clientId, projectName } = body;
-
-  if (!clientId || !projectName) {
-    return jsonError('필수 항목을 입력해 주세요', 400);
+  const validation = validateProjectPayload(body, {
+    isPatch: false,
+    userRole: auth.session.user.role,
+  });
+  if (!validation.ok) {
+    return jsonError(validation.error, validation.status);
   }
 
   await dbConnect();
 
-  const client = await ClientModel.findById(clientId);
+  const client = await ClientModel.findById(validation.data.clientId);
   if (!client) {
     return jsonError('고객을 찾을 수 없습니다', 404);
   }
 
-  const project = await ProjectModel.create({
-    clientId,
-    projectName: String(projectName).trim(),
-  });
+  try {
+    const project = await ProjectModel.create({
+      clientId: validation.data.clientId,
+      projectName: validation.data.projectName,
+      projectType: validation.data.projectType,
+      billingModel: validation.data.billingModel,
+      status: validation.data.status ?? 'Active',
+      billingCycle: validation.data.billingCycle,
+      currency: validation.data.currency,
+      contractAmount: validation.data.contractAmount,
+      baseFeeAmount: validation.data.baseFeeAmount,
+      successFeeRate: validation.data.successFeeRate,
+      hourlyRate: validation.data.hourlyRate,
+      workSubtype: validation.data.workSubtype,
+      eventDate: validation.data.eventDate,
+      fiscalYearStart: validation.data.fiscalYearStart,
+      fiscalYearEnd: validation.data.fiscalYearEnd,
+      billingAnchorDay: validation.data.billingAnchorDay,
+      notes: validation.data.notes,
+    });
 
-  return NextResponse.json(serializeProject(project), { status: 201 });
+    let warning: string | undefined;
+    if (
+      isLongLivedProjectType(validation.data.projectType) &&
+      project.status === 'Active'
+    ) {
+      const duplicateCount = await ProjectModel.countDocuments({
+        clientId: validation.data.clientId,
+        projectType: validation.data.projectType,
+        status: 'Active',
+        _id: { $ne: project._id },
+      });
+      if (duplicateCount > 0) {
+        warning = getDuplicateWarningMessage(validation.data.projectType);
+      }
+    }
+
+    const payload = serializeProject(project);
+    return NextResponse.json(warning ? { ...payload, warning } : payload, {
+      status: 201,
+    });
+  } catch (err) {
+    console.error('POST /api/projects failed:', err);
+    return jsonError('프로젝트 저장에 실패했습니다', 500);
+  }
 }

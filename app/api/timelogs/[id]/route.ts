@@ -5,10 +5,11 @@ import { requireSession } from '@/lib/auth';
 import { jsonError } from '@/lib/api-error';
 import { canEditTimeLog, isReadOnlyOnLeave } from '@/lib/permissions';
 import { TimeLogModel } from '@/models/TimeLog';
+import { isValidHours, TIMELOG_HOURS_RANGE_MESSAGE } from '@/lib/timelog-hours';
 import {
-  isValidHours,
   parseTimeLogDate,
-  serializeTimeLog,
+  resolveTimeLogContent,
+  serializeTimeLogsWithProjects,
   validateDailyHours,
 } from '@/lib/timelog-helpers';
 
@@ -77,13 +78,22 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   if (body.hours !== undefined) {
     if (!isValidHours(body.hours)) {
-      return jsonError('시간은 0.5~24 사이여야 합니다', 400);
+      return jsonError(TIMELOG_HOURS_RANGE_MESSAGE, 400);
     }
     updates.hours = body.hours;
   }
 
-  if (body.description !== undefined) {
-    updates.description = String(body.description).trim();
+  if (body.description !== undefined || body.activity !== undefined || body.projectId !== undefined) {
+    const content = await resolveTimeLogContent({
+      projectId: String(updates.projectId ?? log.projectId),
+      description: body.description !== undefined ? body.description : log.description,
+      activity: body.activity !== undefined ? body.activity : log.activity,
+    });
+    if (!content.ok) {
+      return jsonError(content.error, content.status);
+    }
+    updates.description = content.description;
+    updates.activity = content.activity;
   }
 
   const nextDate = (updates.date as Date | undefined) ?? log.date;
@@ -102,7 +112,8 @@ export async function PATCH(request: Request, context: RouteContext) {
   Object.assign(log, updates);
   await log.save();
 
-  return NextResponse.json(serializeTimeLog(log));
+  const [serialized] = await serializeTimeLogsWithProjects([log]);
+  return NextResponse.json(serialized);
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {

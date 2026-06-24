@@ -6,15 +6,11 @@ import { jsonError } from '@/lib/api-error';
 import { isReadOnlyOnLeave } from '@/lib/permissions';
 import { ClientModel } from '@/models/Client';
 import { ExpenseModel } from '@/models/Expense';
-import { findOrCreateOverheadReceiptsFolder, uploadReceipt } from '@/lib/drive/upload';
+import { findOrCreateOverheadReceiptsFolder, mapDriveUploadError, uploadReceipt } from '@/lib/drive/upload';
+import { RECEIPT_ALLOWED_MIME_TYPES, resolveReceiptMimeType } from '@/lib/receipt-mime';
+import { RECEIPT_MAX_BYTES } from '@/lib/receipt-file';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
-const ALLOWED_MIME_TYPES = new Set([
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-]);
+const MAX_FILE_SIZE = RECEIPT_MAX_BYTES;
 
 export async function POST(request: Request) {
   const auth = await requireSession();
@@ -34,12 +30,13 @@ export async function POST(request: Request) {
     return jsonError('파일을 선택해 주세요', 400);
   }
 
-  if (expenseType !== 'Core' && expenseType !== 'Overhead') {
-    return jsonError('경비 유형이 올바르지 않습니다', 400);
+  const mimeType = resolveReceiptMimeType(fileEntry, RECEIPT_ALLOWED_MIME_TYPES);
+  if (!mimeType) {
+    return jsonError('PDF, JPEG, PNG 파일만 업로드할 수 있습니다', 400);
   }
 
-  if (!ALLOWED_MIME_TYPES.has(fileEntry.type)) {
-    return jsonError('PDF, JPEG, PNG 파일만 업로드할 수 있습니다', 400);
+  if (expenseType !== 'Core' && expenseType !== 'Overhead') {
+    return jsonError('경비 유형이 올바르지 않습니다', 400);
   }
 
   if (fileEntry.size > MAX_FILE_SIZE) {
@@ -67,37 +64,42 @@ export async function POST(request: Request) {
     folderId = await findOrCreateOverheadReceiptsFolder();
   }
 
-  const buffer = Buffer.from(await fileEntry.arrayBuffer());
-  const uploaded = await uploadReceipt(
-    {
-      name: fileEntry.name,
-      mimeType: fileEntry.type,
-      buffer,
-    },
-    folderId,
-  );
+  try {
+    const buffer = Buffer.from(await fileEntry.arrayBuffer());
+    const uploaded = await uploadReceipt(
+      {
+        name: fileEntry.name,
+        mimeType,
+        buffer,
+      },
+      folderId,
+    );
 
-  if (expenseId && typeof expenseId === 'string') {
-    if (!mongoose.Types.ObjectId.isValid(expenseId)) {
-      return jsonError('경비를 찾을 수 없습니다', 404);
+    if (expenseId && typeof expenseId === 'string') {
+      if (!mongoose.Types.ObjectId.isValid(expenseId)) {
+        return jsonError('경비를 찾을 수 없습니다', 404);
+      }
+
+      const expense = await ExpenseModel.findById(expenseId);
+      if (!expense) {
+        return jsonError('경비를 찾을 수 없습니다', 404);
+      }
+
+      if (
+        auth.session.user.role === 'Preparer' &&
+        String(expense.userId) !== auth.session.user.userId
+      ) {
+        return jsonError('권한이 없습니다', 403);
+      }
+
+      expense.googleDriveFileId = uploaded.id;
+      expense.receiptUrl = uploaded.webViewLink;
+      await expense.save();
     }
 
-    const expense = await ExpenseModel.findById(expenseId);
-    if (!expense) {
-      return jsonError('경비를 찾을 수 없습니다', 404);
-    }
-
-    if (
-      auth.session.user.role === 'Preparer' &&
-      String(expense.userId) !== auth.session.user.userId
-    ) {
-      return jsonError('권한이 없습니다', 403);
-    }
-
-    expense.googleDriveFileId = uploaded.id;
-    expense.receiptUrl = uploaded.webViewLink;
-    await expense.save();
+    return NextResponse.json(uploaded);
+  } catch (error) {
+    console.error('Expense receipt upload failed:', error);
+    return jsonError(mapDriveUploadError(error), 500);
   }
-
-  return NextResponse.json(uploaded);
 }

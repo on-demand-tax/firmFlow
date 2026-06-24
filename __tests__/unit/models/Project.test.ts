@@ -42,6 +42,43 @@ describe('ProjectModel', () => {
     expect(project.projectName).toBe('Audit 2026');
   });
 
+  it('defaults projectType General, billingModel Hourly, currency KRW', async () => {
+    const project = await ProjectModel.create({
+      clientId,
+      projectName: 'Legacy',
+    });
+    expect(project.projectType).toBe('General');
+    expect(project.billingModel).toBe('Hourly');
+    expect(project.currency).toBe('KRW');
+  });
+
+  it('stores OtherWork TaxAmendment fields', async () => {
+    const project = await ProjectModel.create({
+      clientId,
+      projectName: '경정 2024',
+      projectType: 'OtherWork',
+      workSubtype: 'TaxAmendment',
+      billingModel: 'BasePlusSuccess',
+      currency: 'KRW',
+      baseFeeAmount: 500000,
+      successFeeRate: 15,
+    });
+    expect(project.successFeeRate).toBe(15);
+    expect(project.projectType).toBe('OtherWork');
+    expect(project.workSubtype).toBe('TaxAmendment');
+  });
+
+  it('accepts legacy TaxAmendment projectType for read compatibility', async () => {
+    const project = await ProjectModel.create({
+      clientId,
+      projectName: 'Legacy 경정',
+      projectType: 'TaxAmendment',
+      billingModel: 'BasePlusSuccess',
+      currency: 'KRW',
+    });
+    expect(project.projectType).toBe('TaxAmendment');
+  });
+
   it('requires clientId', async () => {
     await expect(
       ProjectModel.create({

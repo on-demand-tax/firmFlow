@@ -4,6 +4,7 @@ import {
   validateTimesheetForm,
   type TimesheetFormValues,
 } from '@/components/app/TimesheetForm';
+import { TIMELOG_HOURS_RANGE_MESSAGE } from '@/lib/timelog-hours';
 
 const projects = [
   { value: 'proj-1', label: 'Audit 2026', clientId: 'client-1', clientName: 'ABC Corp' },
@@ -20,7 +21,7 @@ const baseValues: TimesheetFormValues = {
 describe('validateTimesheetForm', () => {
   it('rejects hours greater than 24', () => {
     expect(validateTimesheetForm({ ...baseValues, hours: 25 })).toBe(
-      '시간은 0.5~24 사이여야 합니다',
+      TIMELOG_HOURS_RANGE_MESSAGE,
     );
   });
 
@@ -49,7 +50,7 @@ describe('TimesheetForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '등록' }));
 
-    expect(await screen.findByText('시간은 0.5~24 사이여야 합니다')).toBeInTheDocument();
+    expect(await screen.findByText(TIMELOG_HOURS_RANGE_MESSAGE)).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

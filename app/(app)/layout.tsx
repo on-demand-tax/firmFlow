@@ -18,13 +18,13 @@ export default async function AppShellLayout({
   const navItems = getNavItemsForRole(session.user.role);
 
   return (
-    <div className="flex min-h-full flex-1">
+    <div className="flex min-h-full flex-1 flex-col md:flex-row">
       <Sidebar
         userName={session.user.name}
         role={session.user.role}
         navItems={navItems}
       />
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
     </div>
   );
 }

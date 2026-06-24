@@ -1,17 +1,18 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  formatCurrencyTotals,
+  formatMoney,
+  type CurrencyTotals,
+} from '@/lib/currency';
 
 interface DashboardSummaryProps {
   totalHours: number;
   totalLaborCost: number;
-  totalCoreExpense: number;
-  totalOverhead: number;
+  totalCoreExpense: CurrencyTotals;
+  totalOverhead: CurrencyTotals;
   pendingTimeLogCount: number;
   pendingExpenseCount: number;
-}
-
-function formatCurrency(amount: number) {
-  return `${amount.toLocaleString('ko-KR')}원`;
 }
 
 export default function DashboardSummary({
@@ -42,7 +43,7 @@ export default function DashboardSummary({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-2xl font-bold">{formatCurrency(totalLaborCost)}</p>
+          <p className="text-2xl font-bold">{formatMoney(totalLaborCost, 'KRW')}</p>
         </CardContent>
       </Card>
 
@@ -53,7 +54,9 @@ export default function DashboardSummary({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-2xl font-bold">{formatCurrency(totalCoreExpense)}</p>
+          <p className="text-2xl font-bold leading-snug">
+            {formatCurrencyTotals(totalCoreExpense)}
+          </p>
         </CardContent>
       </Card>
 
@@ -64,7 +67,9 @@ export default function DashboardSummary({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-2xl font-bold">{formatCurrency(totalOverhead)}</p>
+          <p className="text-2xl font-bold leading-snug">
+            {formatCurrencyTotals(totalOverhead)}
+          </p>
         </CardContent>
       </Card>
 
