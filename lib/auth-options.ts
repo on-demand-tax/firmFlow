@@ -94,7 +94,30 @@ export function getAuthOptions(): NextAuthOptions {
           token.status = user.status;
           token.email = user.email ?? undefined;
           token.name = user.name ?? undefined;
+          return token;
         }
+
+        const email = typeof token.email === 'string' ? token.email.trim().toLowerCase() : '';
+        if (!email) {
+          return token;
+        }
+
+        const dbConnect = (await import('@/lib/db')).default;
+        const { UserModel } = await import('@/models/User');
+        await dbConnect();
+
+        const dbUser = await UserModel.findOne({ email }).select('_id role status name');
+        if (!dbUser) {
+          return token;
+        }
+
+        token.userId = dbUser._id.toString();
+        token.role = dbUser.role;
+        token.status = dbUser.status;
+        if (dbUser.name) {
+          token.name = dbUser.name;
+        }
+
         return token;
       },
       async session({ session, token }) {
