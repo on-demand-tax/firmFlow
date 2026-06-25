@@ -1,9 +1,10 @@
 import { getNavItemsForRole } from '@/lib/nav-items';
 
 describe('getNavItemsForRole', () => {
-  it('Preparer sees dashboard, timesheet, expenses only', () => {
+  it('Preparer sees documents first, then dashboard, timesheet, expenses', () => {
     const hrefs = getNavItemsForRole('Preparer').map((i) => i.href);
-    expect(hrefs).toEqual(['/app', '/app/timesheet', '/app/expenses', '/app/about']);
+    expect(hrefs[0]).toBe('/app/documents');
+    expect(hrefs).toEqual(['/app/documents', '/app', '/app/timesheet', '/app/expenses', '/app/about']);
   });
   it('Approver adds approvals, clients, projects', () => {
     const hrefs = getNavItemsForRole('Approver').map((i) => i.href);

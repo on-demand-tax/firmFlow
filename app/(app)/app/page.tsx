@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import DashboardSummary from '@/components/app/DashboardSummary';
+import { ExpiringDocumentsCard } from '@/components/app/ExpiringDocumentsCard';
 import {
   DataRecordCard,
   DataRecordRow,
@@ -223,6 +224,8 @@ export default function DashboardPage() {
             pendingTimeLogCount={data.summary.pendingTimeLogCount}
             pendingExpenseCount={data.summary.pendingExpenseCount}
           />
+
+          <ExpiringDocumentsCard />
 
           <Card>
             <CardHeader>

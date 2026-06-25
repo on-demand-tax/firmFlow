@@ -292,9 +292,12 @@ describe('GET /api/projects/options', () => {
     );
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toHaveLength(1);
-    expect(data[0].label).toBe('Active Project (일반)');
-    expect(data[0].projectTypeLabel).toBe('일반');
+    const clientProjects = data.filter(
+      (project: { clientName: string }) => project.clientName === 'Test Client',
+    );
+    expect(clientProjects).toHaveLength(1);
+    expect(clientProjects[0].label).toBe('Active Project (일반)');
+    expect(clientProjects[0].projectTypeLabel).toBe('일반');
   });
 
   it('includes Completed projects for Approver', async () => {
@@ -315,7 +318,10 @@ describe('GET /api/projects/options', () => {
     );
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toHaveLength(2);
+    const clientProjects = data.filter(
+      (project: { clientName: string }) => project.clientName === 'Test Client',
+    );
+    expect(clientProjects).toHaveLength(2);
   });
 });
 

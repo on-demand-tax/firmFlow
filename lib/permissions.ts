@@ -71,3 +71,23 @@ export function canEditExpense(sessionUser: SessionUser, expense: ExpenseLike): 
 
   return expense.status === 'Pending' || expense.status === 'Rejected';
 }
+
+export interface DocumentLike {
+  createdBy: string;
+}
+
+export function canEditDocument(sessionUser: SessionUser, doc: DocumentLike): boolean {
+  if (sessionUser.role === 'Admin') {
+    return true;
+  }
+
+  return doc.createdBy === sessionUser.userId;
+}
+
+export function canDeleteDocument(sessionUser: SessionUser): boolean {
+  return sessionUser.role === 'Admin';
+}
+
+export function canChangeDocumentCategory(sessionUser: SessionUser): boolean {
+  return sessionUser.role === 'Admin';
+}

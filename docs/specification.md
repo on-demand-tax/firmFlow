@@ -93,6 +93,12 @@ FirmFlow는 소규모 회계법인을 위한 경량·고효율 반응형 웹 애
 | PATCH/DELETE | `/api/expenses/[id]` | Session | 수정·삭제 (`canEditExpense`) |
 | PATCH | `/api/expenses/[id]/status` | Approver | 승인·반려 |
 | POST | `/api/expenses/upload` | Session | 영수증 multipart → Drive |
+| GET | `/api/documents` | Session | 내부 문서 목록 (`?category=`, `?tag=`, `?q=`, `?expiring=`, `?includeExpired=`) |
+| POST | `/api/documents` | Session | 링크 문서 등록 |
+| POST | `/api/documents/upload` | Session | 파일 multipart → Drive + 문서 생성·새 버전 |
+| GET | `/api/documents/tags` | Session | 태그 자동완성 목록 |
+| GET | `/api/documents/expiring` | Session | 만료 임박 (`?withinDays=30`) |
+| GET/PATCH/DELETE | `/api/documents/[id]` | Session / Admin | 상세·수정·삭제 (`canEditDocument`, DELETE Admin) |
 | GET/POST | `/api/period-locks` | Admin | 마감 목록·생성 |
 | DELETE | `/api/period-locks/[id]` | Admin | 마감 해제 + `lockedAt` unset |
 | GET | `/api/dashboard` | Session | 집계 (아래 쿼리) |
@@ -531,6 +537,27 @@ Admin이 **날짜 범위**를 마감하면, 해당 기간의 TimeLog·Expense에
 
 **구현:** `models/PeriodLock.ts`, `lib/period-lock.ts`, `__tests__/api/period-locks.test.ts`
 
+### 3.7. InternalDocument (`models/InternalDocument.ts`)
+
+법인 **운영 문서·참고 링크** 허브. 경비 영수증·고객 폴더와 분리.
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `title` | String | 제목 |
+| `description` | String | 설명 (선택) |
+| `category` | Enum | `lib/document-categories.ts` 8종 (인사·행정·총무 등) |
+| `tags` | [String] | 자유 태그 |
+| `entryType` | Enum | `File` \| `Link` |
+| `externalUrl` | String | `Link` URL |
+| `expiresAt` | Date | 만료일 (선택, 서울 date-only 표시) |
+| `createdBy` | ObjectId | 등록자 |
+| `versions` | Array | `File` embedded 버전 (v1, v2…) |
+| `currentVersion` | Number | 현행 버전 번호 (되돌리기 가능) |
+
+**권한:** `lib/permissions.ts` — `canEditDocument`(등록자+Admin), `canDeleteDocument`(Admin), 카테고리 변경 Admin만.
+
+**UI:** `/app/documents` — 사이드바 **최상단** `문서`. 대시보드 **만료 임박 문서** 카드.
+
 ---
 
 ## 4. Google Drive 연동 명세
@@ -549,11 +576,18 @@ Admin이 **날짜 범위**를 마감하면, 해당 기간의 TimeLog·Expense에
 
 **클라이언트 첨부 (§3.5):** 모바일 촬영·앨범 또는 데스크톱 파일 선택 → 동일 업로드 API. 허용 MIME: `application/pdf`, `image/jpeg`, `image/png`.
 
+### 내부 운영 문서 (`POST /api/documents/upload`)
+
+1. `FirmFlow_Data/Internal_Documents/[카테고리]/` (`lib/drive/internal-documents.ts`)
+2. 허용 MIME: PDF, JPEG, PNG, XLSX, DOCX — **최대 10MB** (`lib/document-file.ts`)
+3. Mongo `InternalDocument` + embedded `versions[]`; 링크 항목은 Drive 저장 없음
+4. UI: **Drive에서 보기** (`webViewLink`) — 개정은 앱 「새 버전」·「현행으로 지정」
+
 ---
 
 ## 5. 테스트 구조 및 검증
 
-Jest + React Testing Library + mongodb-memory-server. **202 tests** (`npm test -- --runInBand`).
+Jest + React Testing Library + mongodb-memory-server. **292 tests** (`npm test -- --runInBand`).
 
 ### 5.1. 디렉터리 맵
 
@@ -599,7 +633,7 @@ npm run build
 
 ## 6. 구현 체크리스트 및 실행 로드맵
 
-**현재 상태 (2026-06-24):** MVP 범위 **구현 완료**. Jest **202 tests** 통과 (`npm test -- --runInBand`).  
+**현재 상태 (2026-06-25):** MVP 범위 **구현 완료**. Jest **292 tests** 통과 (`npm test -- --runInBand`).  
 **미완료:** Phase 2 기능(청구·수금·Export), 프로덕션 배포, 일부 UI 권장 사항.  
 **Agent 참고:** 문서 읽기 순서·코드 위치 → [`docs/README.md`](README.md). 구 설계 enum은 `docs/superpowers/`를 따르지 말 것.
 
@@ -633,6 +667,7 @@ npm run build
   - 역할별 사이드바: `lib/nav-items.ts`
   - 대시보드 경비 KRW/USD 분리 집계
   - `ReceiptAttachment` — 경비 영수증 모바일 촬영·앨범·미리보기 (`lib/receipt-file.ts`)
+  - **내부 문서 허브** — `/app/documents`, `InternalDocument`, Drive `Internal_Documents` (§3.7)
 
 - [x] **Phase 6: 프로젝트 업무 구분·청구 메타 (Section 3.3)**
   - `lib/project-types.ts` — 레지스트리, 검증, 프로젝트명 템플릿, 레거시 enum 정규화

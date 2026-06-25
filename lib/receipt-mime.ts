@@ -3,6 +3,8 @@ const EXTENSION_MIME: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 };
 
 export const RECEIPT_ALLOWED_MIME_TYPES = new Set<string>([

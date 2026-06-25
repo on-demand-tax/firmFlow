@@ -5,6 +5,8 @@ export type NavItem = {
   label: string;
 };
 
+const DOCUMENT_ITEMS: NavItem[] = [{ href: '/app/documents', label: '문서' }];
+
 const PREPARER_ITEMS: NavItem[] = [
   { href: '/app', label: '대시보드' },
   { href: '/app/timesheet', label: '내 타임시트' },
@@ -28,10 +30,10 @@ const COMMON_ITEMS: NavItem[] = [{ href: '/app/about', label: '정보' }];
 export function getNavItemsForRole(role: UserRole): NavItem[] {
   switch (role) {
     case 'Admin':
-      return [...PREPARER_ITEMS, ...APPROVER_ITEMS, ...ADMIN_ITEMS, ...COMMON_ITEMS];
+      return [...DOCUMENT_ITEMS, ...PREPARER_ITEMS, ...APPROVER_ITEMS, ...ADMIN_ITEMS, ...COMMON_ITEMS];
     case 'Approver':
-      return [...PREPARER_ITEMS, ...APPROVER_ITEMS, ...COMMON_ITEMS];
+      return [...DOCUMENT_ITEMS, ...PREPARER_ITEMS, ...APPROVER_ITEMS, ...COMMON_ITEMS];
     case 'Preparer':
-      return [...PREPARER_ITEMS, ...COMMON_ITEMS];
+      return [...DOCUMENT_ITEMS, ...PREPARER_ITEMS, ...COMMON_ITEMS];
   }
 }
