@@ -5,6 +5,7 @@
       "version": "0.1.2",
       "title": "add internal documents hub design spec",
       "items": [
+        "add internal documents hub with versioning and expiry",
         "add internal document category registry",
         "add internal documents hub design spec"
       ]
