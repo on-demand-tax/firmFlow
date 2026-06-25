@@ -1,6 +1,14 @@
 {
   "entries": [
     {
+      "date": "2026-06-26",
+      "version": "0.1.2",
+      "title": "add internal documents hub design spec",
+      "items": [
+        "add internal documents hub design spec"
+      ]
+    },
+    {
       "date": "2026-06-25",
       "version": "0.1.1",
       "title": "경비 분류 필드 추가 및 타임시트 수정·changelog 자동화",
