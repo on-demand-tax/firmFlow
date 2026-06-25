@@ -9,8 +9,8 @@ export function DataRecordCard({
   className?: string;
 }) {
   return (
-    <Card className={className}>
-      <CardContent className="space-y-2.5 pt-4 text-base">{children}</CardContent>
+    <Card className={cn('min-w-0', className)}>
+      <CardContent className="min-w-0 space-y-2.5 pt-4 text-base">{children}</CardContent>
     </Card>
   );
 }
@@ -25,9 +25,9 @@ export function DataRecordRow({
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3', className)}>
-      <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
-      <span className="min-w-0 break-words text-right text-sm font-medium">{children}</span>
+    <div className={cn('grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-0.5', className)}>
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="min-w-0 break-words text-sm font-medium">{children}</span>
     </div>
   );
 }

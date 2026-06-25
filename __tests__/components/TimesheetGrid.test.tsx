@@ -1,11 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import TimesheetGrid, { type TimesheetGridEntry } from '@/components/TimesheetGrid';
-import { MOBILE_BREAKPOINT } from '@/lib/use-media-query';
+import { COMPACT_TABLE_BREAKPOINT, MOBILE_BREAKPOINT } from '@/lib/use-media-query';
 
 function mockViewportWidth(width: number) {
   window.matchMedia = jest.fn().mockImplementation((query: string) => ({
     matches:
-      query === `(max-width: ${MOBILE_BREAKPOINT - 1}px)` ? width < MOBILE_BREAKPOINT : false,
+      query === `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
+        ? width < MOBILE_BREAKPOINT
+        : query === `(max-width: ${COMPACT_TABLE_BREAKPOINT - 1}px)`
+          ? width < COMPACT_TABLE_BREAKPOINT
+          : false,
     media: query,
     onchange: null,
     addListener: jest.fn(),
@@ -51,6 +55,14 @@ const sampleEntries: TimesheetGridEntry[] = [
 describe('TimesheetGrid Layout Adaptability', () => {
   it('좁은 화면(모바일)에서 컴팩트 카드 뷰 렌더링', () => {
     mockViewportWidth(375);
+
+    render(<TimesheetGrid viewMode="auto" entries={sampleEntries} />);
+    expect(screen.getByTestId('mobile-timesheet-card-stack')).toBeInTheDocument();
+    expect(screen.queryByTestId('desktop-entry-list')).not.toBeInTheDocument();
+  });
+
+  it('태블릿 너비에서도 컴팩트 카드 뷰 렌더링', () => {
+    mockViewportWidth(900);
 
     render(<TimesheetGrid viewMode="auto" entries={sampleEntries} />);
     expect(screen.getByTestId('mobile-timesheet-card-stack')).toBeInTheDocument();

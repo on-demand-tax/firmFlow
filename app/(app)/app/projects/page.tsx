@@ -40,7 +40,7 @@ import {
   type BillingCycle,
   type WorkSubtype,
 } from '@/lib/project-types';
-import { tableWrapCell } from '@/lib/table-cell-styles';
+import { dataTableClass, tableWrapCell } from '@/lib/table-cell-styles';
 
 interface ClientOption {
   value: string;
@@ -849,7 +849,7 @@ export default function ProjectsPage() {
                 </div>
               }
               desktop={
-                <Table>
+                <Table className={dataTableClass}>
                   <TableHeader>
                     <TableRow>
                       <TableHead>프로젝트명</TableHead>

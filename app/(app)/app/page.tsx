@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { tableWrapCell } from '@/lib/table-cell-styles';
+import { dataTableClass, tableWrapCell } from '@/lib/table-cell-styles';
 
 interface DashboardProject {
   projectId: string;
@@ -261,7 +261,7 @@ export default function DashboardPage() {
                     </div>
                   }
                   desktop={
-                    <Table>
+                    <Table className={dataTableClass}>
                       <TableHeader>
                         <TableRow>
                           <TableHead>고객</TableHead>

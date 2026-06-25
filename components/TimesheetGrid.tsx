@@ -7,8 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { lockedEntryClass, lockedEntryTitle } from '@/lib/locked-entry-styles';
-import { tableWrapCell, tableWrapCellSm } from '@/lib/table-cell-styles';
-import { useIsMobile } from '@/lib/use-media-query';
+import { cn } from '@/lib/utils';
+import {
+  dataTableClass,
+  tableCompactCell,
+  tableWrapCell,
+  tableWrapCellSm,
+} from '@/lib/table-cell-styles';
+import { useIsCompactTableViewport } from '@/lib/use-media-query';
 import {
   Table,
   TableBody,
@@ -155,10 +161,10 @@ function MobileCardStack({
       {entries.map((entry) => (
         <Card
           key={entry.id}
-          className={lockedEntryClass(entry.lockedAt)}
+          className={cn('min-w-0', lockedEntryClass(entry.lockedAt))}
           title={lockedEntryTitle(entry.lockedAt)}
         >
-          <CardContent className="space-y-2 pt-4">
+          <CardContent className="min-w-0 space-y-2 pt-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium">{formatDate(entry.date)}</span>
               <div className="flex items-center gap-1">
@@ -199,8 +205,8 @@ function DesktopEntryList({
   }
 
   return (
-    <div data-testid="desktop-entry-list" className="overflow-x-auto">
-      <Table>
+    <div data-testid="desktop-entry-list" className="min-w-0 overflow-x-auto">
+      <Table className={dataTableClass}>
         <TableHeader>
           <TableRow>
             <TableHead>작업일</TableHead>
@@ -218,21 +224,21 @@ function DesktopEntryList({
               className={lockedEntryClass(entry.lockedAt)}
               title={lockedEntryTitle(entry.lockedAt)}
             >
-              <TableCell>{formatFullDate(entry.date)}</TableCell>
+              <TableCell className={tableCompactCell}>{formatFullDate(entry.date)}</TableCell>
               <TableCell className={tableWrapCellSm}>
                 {entry.clientName} — {entry.projectLabel}
               </TableCell>
-              <TableCell>{entry.hours}h</TableCell>
+              <TableCell className={tableCompactCell}>{entry.hours}h</TableCell>
               <TableCell className={tableWrapCell}>
                 {entry.activityLabel && (
                   <p className="text-sm font-medium">{entry.activityLabel}</p>
                 )}
                 <p className="text-sm">{entry.description}</p>
               </TableCell>
-              <TableCell>
+              <TableCell className={tableCompactCell}>
                 <EntryStatusBadge entry={entry} onViewReject={() => onViewReject(entry)} />
               </TableCell>
-              <TableCell>
+              <TableCell className={tableCompactCell}>
                 <EntryActions entry={entry} onEdit={onEdit} />
               </TableCell>
             </TableRow>
@@ -244,9 +250,9 @@ function DesktopEntryList({
 }
 
 export default function TimesheetGrid({ entries, viewMode, onEdit }: TimesheetGridProps) {
-  const isMobileAuto = useIsMobile();
+  const isCompactViewport = useIsCompactTableViewport();
   const showMobile =
-    viewMode === 'mobile' || (viewMode === 'auto' && isMobileAuto);
+    viewMode === 'mobile' || (viewMode === 'auto' && isCompactViewport);
   const [viewRejectEntry, setViewRejectEntry] = useState<TimesheetGridEntry | null>(
     null,
   );

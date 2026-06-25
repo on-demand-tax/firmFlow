@@ -29,7 +29,12 @@ import {
 } from '@/lib/expense-payment-methods';
 import { getExpensePurposeLabel, type ExpensePurpose } from '@/lib/expense-purposes';
 import { resolveAuthorLabel } from '@/lib/author-display';
-import { tableWrapCell, tableWrapCellSm } from '@/lib/table-cell-styles';
+import {
+  dataTableClass,
+  tableCompactCell,
+  tableWrapCell,
+  tableWrapCellSm,
+} from '@/lib/table-cell-styles';
 
 interface TimeLog {
   _id: string;
@@ -272,7 +277,7 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 sm:p-8">
+    <div className="flex min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">승인 대기</h1>
         <p className="mt-1 text-muted-foreground">
@@ -327,6 +332,7 @@ export default function ApprovalsPage() {
             <p className="text-muted-foreground">승인 대기 중인 타임로그가 없습니다.</p>
           ) : (
             <ResponsiveDataView
+              compactBelow="lg"
               mobile={
                 <div className="flex flex-col gap-3">
                   {logs.map((log) => {
@@ -345,12 +351,10 @@ export default function ApprovalsPage() {
                         </DataRecordRow>
                         <DataRecordRow label="시간">{log.hours}h</DataRecordRow>
                         <DataRecordRow label="내용">
-                          <span className="block text-right">
-                            {log.activityLabel && (
-                              <span className="block font-medium">{log.activityLabel}</span>
-                            )}
-                            {log.description}
-                          </span>
+                          {log.activityLabel ? (
+                            <span className="block font-medium">{log.activityLabel}</span>
+                          ) : null}
+                          {log.description}
                         </DataRecordRow>
                         <DataRecordActions>
                           <Button
@@ -375,7 +379,7 @@ export default function ApprovalsPage() {
                 </div>
               }
               desktop={
-                <Table>
+                <Table className={dataTableClass}>
                   <TableHeader>
                     <TableRow>
                       <TableHead>작업일</TableHead>
@@ -394,19 +398,21 @@ export default function ApprovalsPage() {
                       const summary = `타임로그 · ${authorLabel(log, userMap)} · ${formatDate(log.date)}`;
                       return (
                         <TableRow key={log._id}>
-                          <TableCell>{formatDate(log.date)}</TableCell>
-                          <TableCell>{authorLabel(log, userMap)}</TableCell>
+                          <TableCell className={tableCompactCell}>{formatDate(log.date)}</TableCell>
+                          <TableCell className={tableWrapCellSm}>
+                            {authorLabel(log, userMap)}
+                          </TableCell>
                           <TableCell className={tableWrapCellSm}>
                             {project ? `${project.clientName} — ${project.label}` : log.projectId}
                           </TableCell>
-                          <TableCell>{log.hours}h</TableCell>
+                          <TableCell className={tableCompactCell}>{log.hours}h</TableCell>
                           <TableCell className={tableWrapCell}>
                             {log.activityLabel && (
                               <p className="text-sm font-medium">{log.activityLabel}</p>
                             )}
                             <p className="text-sm">{log.description}</p>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className={tableCompactCell}>
                             <Badge variant="secondary">대기</Badge>
                           </TableCell>
                           <TableCell className="space-x-2 text-right">
@@ -448,6 +454,7 @@ export default function ApprovalsPage() {
             <p className="text-muted-foreground">승인 대기 중인 경비가 없습니다.</p>
           ) : (
             <ResponsiveDataView
+              compactBelow="lg"
               mobile={
                 <div className="flex flex-col gap-3">
                   {expenses.map((expense) => {
@@ -513,7 +520,7 @@ export default function ApprovalsPage() {
                 </div>
               }
               desktop={
-                <Table>
+                <Table className={dataTableClass}>
                   <TableHeader>
                     <TableRow>
                       <TableHead>지출일</TableHead>
@@ -534,22 +541,26 @@ export default function ApprovalsPage() {
                       const summary = `경비 · ${authorLabel(expense, userMap)} · ${formatDate(expense.date)}`;
                       return (
                         <TableRow key={expense._id}>
-                          <TableCell>{formatDate(expense.date)}</TableCell>
-                          <TableCell>{authorLabel(expense, userMap)}</TableCell>
-                          <TableCell>{expenseTypeLabel[expense.expenseType]}</TableCell>
+                          <TableCell className={tableCompactCell}>{formatDate(expense.date)}</TableCell>
+                          <TableCell className={tableWrapCellSm}>
+                            {authorLabel(expense, userMap)}
+                          </TableCell>
+                          <TableCell className={tableCompactCell}>
+                            {expenseTypeLabel[expense.expenseType]}
+                          </TableCell>
                           <TableCell className={tableWrapCellSm}>
                             {expenseClassificationLabel(expense)}
                           </TableCell>
                           <TableCell className={tableWrapCellSm}>
                             {expenseProjectLabel(expense)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className={tableCompactCell}>
                             {formatExpenseAmount(expense.amount, expense.currency ?? 'KRW')}
                           </TableCell>
                           <TableCell className={tableWrapCell}>
                             {expense.description}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className={tableCompactCell}>
                             {expense.receiptUrl ? (
                               <a
                                 href={expense.receiptUrl}
@@ -563,7 +574,7 @@ export default function ApprovalsPage() {
                               '—'
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className={tableCompactCell}>
                             <Badge variant="secondary">대기</Badge>
                           </TableCell>
                           <TableCell className="space-x-2 text-right">

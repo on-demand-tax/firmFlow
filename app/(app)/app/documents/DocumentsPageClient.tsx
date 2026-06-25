@@ -21,7 +21,7 @@ import {
   type DocumentCategory,
 } from '@/lib/document-categories';
 import { canDeleteDocument, canEditDocument, type UserRole } from '@/lib/permissions';
-import { tableWrapCell } from '@/lib/table-cell-styles';
+import { dataTableClass, tableWrapCell } from '@/lib/table-cell-styles';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -387,7 +387,7 @@ export function DocumentsPageClient({ role, userId }: DocumentsPageClientProps) 
           <ResponsiveDataView
             mobile={<div className="space-y-3">{otherItems.map(renderDocumentRow)}</div>}
             desktop={
-              <Table>
+              <Table className={dataTableClass}>
                 <TableHeader>
                   <TableRow>
                     <TableHead>제목</TableHead>

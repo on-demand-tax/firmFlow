@@ -154,7 +154,7 @@ export default function TimesheetPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 sm:p-8">
+    <div className="flex min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">내 타임시트</h1>
         <p className="mt-1 text-muted-foreground">작업 시간을 기록하고 내역을 확인합니다.</p>

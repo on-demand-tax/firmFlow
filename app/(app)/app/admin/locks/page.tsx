@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { tableWrapCell } from '@/lib/table-cell-styles';
+import { dataTableClass, tableWrapCell } from '@/lib/table-cell-styles';
 
 interface PeriodLock {
   _id: string;
@@ -210,7 +210,7 @@ export default function AdminLocksPage() {
           ) : locks.length === 0 ? (
             <p className="text-muted-foreground">등록된 마감이 없습니다.</p>
           ) : (
-            <Table>
+            <Table className={dataTableClass}>
               <TableHeader>
                 <TableRow>
                   <TableHead>시작일</TableHead>

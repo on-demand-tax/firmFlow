@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { tableWrapCell } from '@/lib/table-cell-styles';
+import { dataTableClass, tableWrapCell } from '@/lib/table-cell-styles';
 
 interface Client {
   _id: string;
@@ -229,7 +229,7 @@ export default function ClientsPage() {
                 </div>
               }
               desktop={
-                <Table>
+                <Table className={dataTableClass}>
                   <TableHeader>
                     <TableRow>
                       <TableHead>고객사명</TableHead>

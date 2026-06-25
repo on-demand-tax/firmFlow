@@ -26,7 +26,12 @@ import {
 import { getExpensePurposeLabel, type ExpensePurpose } from '@/lib/expense-purposes';
 import { canPreparerEditEntry } from '@/lib/entry-editability';
 import { lockedEntryClass, lockedEntryTitle } from '@/lib/locked-entry-styles';
-import { tableWrapCell, tableWrapCellSm } from '@/lib/table-cell-styles';
+import {
+  dataTableClass,
+  tableCompactCell,
+  tableWrapCell,
+  tableWrapCellSm,
+} from '@/lib/table-cell-styles';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -243,7 +248,7 @@ export default function ExpensesPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 sm:p-8">
+    <div className="flex min-w-0 flex-1 flex-col gap-6 p-6 sm:p-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">경비 관리</h1>
         <p className="mt-1 text-muted-foreground">
@@ -307,6 +312,7 @@ export default function ExpensesPage() {
             <p className="text-muted-foreground">등록된 경비가 없습니다.</p>
           ) : (
             <ResponsiveDataView
+              compactBelow="lg"
               mobile={
                 <div className="flex flex-col gap-3">
                   {expenses.map((expense) => (
@@ -376,7 +382,7 @@ export default function ExpensesPage() {
                 </div>
               }
               desktop={
-                <Table>
+                <Table className={dataTableClass}>
                   <TableHeader>
                     <TableRow>
                       <TableHead>지출일</TableHead>
@@ -397,19 +403,21 @@ export default function ExpensesPage() {
                         className={lockedEntryClass(expense.lockedAt)}
                         title={lockedEntryTitle(expense.lockedAt)}
                       >
-                        <TableCell>{formatDate(expense.date)}</TableCell>
-                        <TableCell>{expenseTypeLabel[expense.expenseType]}</TableCell>
+                        <TableCell className={tableCompactCell}>{formatDate(expense.date)}</TableCell>
+                        <TableCell className={tableCompactCell}>
+                          {expenseTypeLabel[expense.expenseType]}
+                        </TableCell>
                         <TableCell className={tableWrapCellSm}>
                           {expenseClassificationLabel(expense)}
                         </TableCell>
                         <TableCell className={tableWrapCellSm}>{projectLabel(expense)}</TableCell>
-                        <TableCell>
+                        <TableCell className={tableCompactCell}>
                           {formatExpenseAmount(expense.amount, expense.currency ?? 'KRW')}
                         </TableCell>
                         <TableCell className={tableWrapCell}>
                           {expense.description}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={tableCompactCell}>
                           {expense.receiptUrl ? (
                             <a
                               href={expense.receiptUrl}
@@ -423,7 +431,7 @@ export default function ExpensesPage() {
                             '—'
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={tableCompactCell}>
                           {expense.status === 'Rejected' ? (
                             <button
                               type="button"
@@ -443,7 +451,7 @@ export default function ExpensesPage() {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className={tableCompactCell}>
                           {canPreparerEditEntry(expense) && (
                             <Button
                               type="button"
