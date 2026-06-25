@@ -26,6 +26,7 @@ import {
 import { getExpensePurposeLabel, type ExpensePurpose } from '@/lib/expense-purposes';
 import { canPreparerEditEntry } from '@/lib/entry-editability';
 import { lockedEntryClass, lockedEntryTitle } from '@/lib/locked-entry-styles';
+import { tableWrapCell, tableWrapCellSm } from '@/lib/table-cell-styles';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -398,14 +399,16 @@ export default function ExpensesPage() {
                       >
                         <TableCell>{formatDate(expense.date)}</TableCell>
                         <TableCell>{expenseTypeLabel[expense.expenseType]}</TableCell>
-                        <TableCell className="max-w-[14rem] text-sm">
+                        <TableCell className={tableWrapCellSm}>
                           {expenseClassificationLabel(expense)}
                         </TableCell>
-                        <TableCell>{projectLabel(expense)}</TableCell>
+                        <TableCell className={tableWrapCellSm}>{projectLabel(expense)}</TableCell>
                         <TableCell>
                           {formatExpenseAmount(expense.amount, expense.currency ?? 'KRW')}
                         </TableCell>
-                        <TableCell>{expense.description}</TableCell>
+                        <TableCell className={tableWrapCell}>
+                          {expense.description}
+                        </TableCell>
                         <TableCell>
                           {expense.receiptUrl ? (
                             <a

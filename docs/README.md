@@ -50,9 +50,22 @@
 | 메시지가 `chore(changelog):`로 시작 | 건너뜀 |
 | 메시지에 `[skip changelog]` 포함 | 건너뜀 |
 
+### Changelog 언어 (필수)
+
+`data/changelog.json`의 **`title`과 `items`는 반드시 한국어로만** 작성한다. `/app/about` 정보 페이지에 그대로 노출되며, **영어 문장·영어 bullet은 사용하지 않는다.**
+
+| 구분 | 규칙 |
+|------|------|
+| **제목 (`title`)** | 한국어 한 줄 요약. `feat:`, `docs:` 등 conventional prefix는 hook이 제거하지만, **prefix 뒤 본문도 한국어**로 쓴다. |
+| **항목 (`items`)** | 본문 `-` bullet도 **한국어**. 영어 커밋 메시지를 그대로 두지 않는다. |
+| **예시 (좋음)** | `내부 문서 허브 추가 (버전 이력·만료 알림)` |
+| **예시 (나쁨)** | `add internal documents hub with versioning and expiry` |
+
+커밋 메시지를 영어로 작성하면 changelog에도 영어가 기록되므로, **사용자에게 보이는 변경은 커밋 전에 한국어로 다시 쓴다.**
+
 ### Agent 작업 시 유의
 
-- **사용자에게 보이는 변경**을 ship할 때는 커밋 메시지 제목·본문 bullet을 **한국어로 명확히** 작성한다 (정보 페이지에 그대로 노출됨).
+- **사용자에게 보이는 변경**을 ship할 때는 커밋 메시지 제목·본문 bullet을 **한국어로만 명확히** 작성한다 (위 **Changelog 언어** 준수).
 - `data/changelog.json`을 **수동 편집하지 말 것** — hook이 정본이다. MVP 초기 항목 등 예외만 직접 수정.
 - changelog 전용 커밋이 필요하면 `chore(changelog): …` prefix 사용.
 - 내부 리팩터·테스트만일 때는 `[skip changelog]`를 메시지에 넣을 수 있다.

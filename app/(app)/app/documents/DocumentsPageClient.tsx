@@ -21,6 +21,7 @@ import {
   type DocumentCategory,
 } from '@/lib/document-categories';
 import { canDeleteDocument, canEditDocument, type UserRole } from '@/lib/permissions';
+import { tableWrapCell } from '@/lib/table-cell-styles';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -243,7 +244,7 @@ export function DocumentsPageClient({ role, userId }: DocumentsPageClientProps) 
       >
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{doc.title}</p>
+            <p className="break-words font-medium">{doc.title}</p>
             <Badge variant="secondary">{doc.categoryLabel}</Badge>
             {doc.entryType === 'File' && doc.currentVersion ? (
               <Badge variant="outline">v{doc.currentVersion}</Badge>
@@ -251,7 +252,7 @@ export function DocumentsPageClient({ role, userId }: DocumentsPageClientProps) 
             {renderExpiryBadge(doc)}
           </div>
           {doc.description ? (
-            <p className="text-sm text-muted-foreground">{doc.description}</p>
+            <p className="break-words text-sm text-muted-foreground">{doc.description}</p>
           ) : null}
           {doc.tags.length > 0 ? (
             <div className="flex flex-wrap gap-1">
@@ -399,7 +400,7 @@ export function DocumentsPageClient({ role, userId }: DocumentsPageClientProps) 
                 <TableBody>
                   {otherItems.map((doc) => (
                     <TableRow key={doc._id}>
-                      <TableCell>{doc.title}</TableCell>
+                      <TableCell className={tableWrapCell}>{doc.title}</TableCell>
                       <TableCell>{doc.categoryLabel}</TableCell>
                       <TableCell>{doc.entryType === 'File' ? '파일' : '링크'}</TableCell>
                       <TableCell>{doc.expiry.label ?? '—'}</TableCell>

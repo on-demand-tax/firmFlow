@@ -27,7 +27,7 @@ export function DataRecordRow({
   return (
     <div className={cn('flex items-start justify-between gap-3', className)}>
       <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
-      <span className="min-w-0 text-right text-sm font-medium">{children}</span>
+      <span className="min-w-0 break-words text-right text-sm font-medium">{children}</span>
     </div>
   );
 }

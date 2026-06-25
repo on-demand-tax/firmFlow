@@ -35,11 +35,11 @@ export function SimpleModal({
         aria-labelledby="simple-modal-title"
         className="relative z-10 w-full max-w-md rounded-xl border bg-background p-6 shadow-lg"
       >
-        <h2 id="simple-modal-title" className="text-lg font-semibold">
+        <h2 id="simple-modal-title" className="break-words text-lg font-semibold">
           {title}
         </h2>
         {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 break-words text-sm text-muted-foreground">{description}</p>
         )}
         <div className="mt-4">{children}</div>
         <div className="mt-6 flex justify-end gap-2">{footer}</div>

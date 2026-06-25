@@ -40,6 +40,7 @@ import {
   type BillingCycle,
   type WorkSubtype,
 } from '@/lib/project-types';
+import { tableWrapCell } from '@/lib/table-cell-styles';
 
 interface ClientOption {
   value: string;
@@ -862,8 +863,8 @@ export default function ProjectsPage() {
                   <TableBody>
                     {filteredProjects.map((project) => (
                       <TableRow key={project._id}>
-                        <TableCell>{project.projectName}</TableCell>
-                        <TableCell>
+                        <TableCell className={tableWrapCell}>{project.projectName}</TableCell>
+                        <TableCell className={tableWrapCell}>
                           {project.clientName}
                           {project.clientCode ? ` (${project.clientCode})` : ''}
                         </TableCell>

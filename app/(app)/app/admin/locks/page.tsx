@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { tableWrapCell } from '@/lib/table-cell-styles';
 
 interface PeriodLock {
   _id: string;
@@ -225,7 +226,7 @@ export default function AdminLocksPage() {
                     <TableCell>{formatDate(lock.startDate)}</TableCell>
                     <TableCell>{formatDate(lock.endDate)}</TableCell>
                     <TableCell>{new Date(lock.lockedAt).toLocaleString('ko-KR')}</TableCell>
-                    <TableCell>{lock.note ?? '—'}</TableCell>
+                    <TableCell className={tableWrapCell}>{lock.note ?? '—'}</TableCell>
                     <TableCell>
                       <Button
                         size="sm"

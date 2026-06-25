@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { tableWrapCell } from '@/lib/table-cell-styles';
 
 interface Client {
   _id: string;
@@ -241,10 +242,10 @@ export default function ClientsPage() {
                   <TableBody>
                     {clients.map((client) => (
                       <TableRow key={client._id}>
-                        <TableCell>{client.name}</TableCell>
+                        <TableCell className={tableWrapCell}>{client.name}</TableCell>
                         <TableCell>{client.clientCode}</TableCell>
                         <TableCell>{client.businessRegistrationNumber}</TableCell>
-                        <TableCell>{client.contactPerson}</TableCell>
+                        <TableCell className={tableWrapCell}>{client.contactPerson}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"

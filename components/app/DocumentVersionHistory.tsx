@@ -43,7 +43,7 @@ export function DocumentVersionHistory({
                 {isCurrent ? <Badge>현행</Badge> : null}
               </div>
               <p className="truncate text-sm text-muted-foreground">{version.fileName}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs break-words text-muted-foreground">
                 {new Date(version.uploadedAt).toLocaleDateString('ko-KR')}
                 {version.note ? ` · ${version.note}` : ''}
               </p>

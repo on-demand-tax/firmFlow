@@ -29,6 +29,7 @@ import {
 } from '@/lib/expense-payment-methods';
 import { getExpensePurposeLabel, type ExpensePurpose } from '@/lib/expense-purposes';
 import { resolveAuthorLabel } from '@/lib/author-display';
+import { tableWrapCell, tableWrapCellSm } from '@/lib/table-cell-styles';
 
 interface TimeLog {
   _id: string;
@@ -395,11 +396,11 @@ export default function ApprovalsPage() {
                         <TableRow key={log._id}>
                           <TableCell>{formatDate(log.date)}</TableCell>
                           <TableCell>{authorLabel(log, userMap)}</TableCell>
-                          <TableCell>
+                          <TableCell className={tableWrapCellSm}>
                             {project ? `${project.clientName} — ${project.label}` : log.projectId}
                           </TableCell>
                           <TableCell>{log.hours}h</TableCell>
-                          <TableCell>
+                          <TableCell className={tableWrapCell}>
                             {log.activityLabel && (
                               <p className="text-sm font-medium">{log.activityLabel}</p>
                             )}
@@ -536,14 +537,18 @@ export default function ApprovalsPage() {
                           <TableCell>{formatDate(expense.date)}</TableCell>
                           <TableCell>{authorLabel(expense, userMap)}</TableCell>
                           <TableCell>{expenseTypeLabel[expense.expenseType]}</TableCell>
-                          <TableCell className="max-w-[14rem] text-sm">
+                          <TableCell className={tableWrapCellSm}>
                             {expenseClassificationLabel(expense)}
                           </TableCell>
-                          <TableCell>{expenseProjectLabel(expense)}</TableCell>
+                          <TableCell className={tableWrapCellSm}>
+                            {expenseProjectLabel(expense)}
+                          </TableCell>
                           <TableCell>
                             {formatExpenseAmount(expense.amount, expense.currency ?? 'KRW')}
                           </TableCell>
-                          <TableCell>{expense.description}</TableCell>
+                          <TableCell className={tableWrapCell}>
+                            {expense.description}
+                          </TableCell>
                           <TableCell>
                             {expense.receiptUrl ? (
                               <a

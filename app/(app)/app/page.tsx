@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { tableWrapCell } from '@/lib/table-cell-styles';
 
 interface DashboardProject {
   projectId: string;
@@ -273,8 +274,8 @@ export default function DashboardPage() {
                       <TableBody>
                         {data.projects.map((project) => (
                           <TableRow key={project.projectId}>
-                            <TableCell>{project.clientName}</TableCell>
-                            <TableCell>{project.projectName}</TableCell>
+                            <TableCell className={tableWrapCell}>{project.clientName}</TableCell>
+                            <TableCell className={tableWrapCell}>{project.projectName}</TableCell>
                             <TableCell className="text-right">{project.hours}h</TableCell>
                             <TableCell className="text-right">
                               {formatLaborCost(project.laborCost)}

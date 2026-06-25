@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { lockedEntryClass, lockedEntryTitle } from '@/lib/locked-entry-styles';
+import { tableWrapCell, tableWrapCellSm } from '@/lib/table-cell-styles';
 import { useIsMobile } from '@/lib/use-media-query';
 import {
   Table,
@@ -165,13 +166,13 @@ function MobileCardStack({
                 <EntryStatusBadge entry={entry} onViewReject={() => onViewReject(entry)} />
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="break-words text-sm text-muted-foreground">
               {entry.clientName} — {entry.projectLabel}
             </p>
             {entry.activityLabel && (
               <p className="text-sm font-medium">{entry.activityLabel}</p>
             )}
-            <p className="text-sm">{entry.description}</p>
+            <p className="break-words text-sm">{entry.description}</p>
             <p className="text-sm font-semibold">{entry.hours}h</p>
           </CardContent>
         </Card>
@@ -218,11 +219,11 @@ function DesktopEntryList({
               title={lockedEntryTitle(entry.lockedAt)}
             >
               <TableCell>{formatFullDate(entry.date)}</TableCell>
-              <TableCell>
+              <TableCell className={tableWrapCellSm}>
                 {entry.clientName} — {entry.projectLabel}
               </TableCell>
               <TableCell>{entry.hours}h</TableCell>
-              <TableCell>
+              <TableCell className={tableWrapCell}>
                 {entry.activityLabel && (
                   <p className="text-sm font-medium">{entry.activityLabel}</p>
                 )}
